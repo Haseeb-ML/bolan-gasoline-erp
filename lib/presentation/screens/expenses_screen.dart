@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
@@ -52,18 +51,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       );
     }
     final csv = buf.toString();
-    final ok = await downloadTextFile(
-      filename: 'bolan_expenses_$_period.csv',
-      content: csv,
-      mimeType: 'text/csv',
-    );
-    if (!mounted) return;
-    if (!ok) await Clipboard.setData(ClipboardData(text: csv));
-    if (!mounted) return;
-    showErpSnackBar(
+    await openExcelSheetViewer(
       context,
-      tr(isUrdu, 'Expenses Excel (.csv) downloaded!',
-          'اخراجات ایکسل (.csv) ڈاؤن لوڈ ہو گئی!'),
+      isUrdu: isUrdu,
+      filename: 'bolan_expenses_$_period.csv',
+      sheetTitle: tr(
+        isUrdu,
+        'Pump Expenses & Salaries — Excel Sheet View',
+        'پمپ اخراجات اور تنخواہیں — ایکسل شیٹ ویو',
+      ),
+      csvContent: csv,
     );
   }
 

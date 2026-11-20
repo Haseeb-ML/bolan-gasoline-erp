@@ -143,6 +143,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Download Excel (.csv)'));
       await tester.pumpAndSettle();
+      // Verify In-App Excel Sheet Viewer opens inside the software with Download & Close buttons!
+      expect(find.text('Download Excel File (.csv)'), findsOneWidget);
+      await tester.tap(find.text('Download Excel File (.csv)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     }
 
@@ -178,6 +184,11 @@ void main() {
     await tester.tap(find.text('Download Report'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Download Excel (.csv)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Download Excel File (.csv)'), findsOneWidget);
+    await tester.tap(find.text('Download Excel File (.csv)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
 
@@ -216,6 +227,11 @@ void main() {
     await tester.tap(find.text('Download Report'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Download Excel (.csv)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Download Excel File (.csv)'), findsOneWidget);
+    await tester.tap(find.text('Download Excel File (.csv)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
 

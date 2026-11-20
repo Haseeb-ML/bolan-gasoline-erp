@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
@@ -57,18 +56,16 @@ class _SalesScreenState extends State<SalesScreen> {
       );
     }
     final csv = buf.toString();
-    final ok = await downloadTextFile(
-      filename: 'bolan_sales_$_period.csv',
-      content: csv,
-      mimeType: 'text/csv',
-    );
-    if (!mounted) return;
-    if (!ok) await Clipboard.setData(ClipboardData(text: csv));
-    if (!mounted) return;
-    showErpSnackBar(
+    await openExcelSheetViewer(
       context,
-      tr(isUrdu, 'Sales Excel (.csv) downloaded!',
-          'فروخت ایکسل (.csv) ڈاؤن لوڈ ہو گئی!'),
+      isUrdu: isUrdu,
+      filename: 'bolan_sales_$_period.csv',
+      sheetTitle: tr(
+        isUrdu,
+        'Fuel Sales Register — Excel Sheet View',
+        'تیل فروخت رجسٹر — ایکسل شیٹ ویو',
+      ),
+      csvContent: csv,
     );
   }
 

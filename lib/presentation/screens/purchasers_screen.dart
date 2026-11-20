@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
@@ -46,18 +45,16 @@ class _PurchasersScreenState extends State<PurchasersScreen> {
       );
     }
     final csv = buf.toString();
-    final ok = await downloadTextFile(
-      filename: 'bolan_purchasers_khata.csv',
-      content: csv,
-      mimeType: 'text/csv',
-    );
-    if (!mounted) return;
-    if (!ok) await Clipboard.setData(ClipboardData(text: csv));
-    if (!mounted) return;
-    showErpSnackBar(
+    await openExcelSheetViewer(
       context,
-      tr(isUrdu, 'Purchasers Khata Excel (.csv) downloaded!',
-          'پرچیزرز کھاتہ ایکسل (.csv) ڈاؤن لوڈ ہو گئی!'),
+      isUrdu: isUrdu,
+      filename: 'bolan_purchasers_khata.csv',
+      sheetTitle: tr(
+        isUrdu,
+        'Purchasers Khata Summary — Excel Sheet View',
+        'پرچیزرز کھاتہ خلاصہ — ایکسل شیٹ ویو',
+      ),
+      csvContent: csv,
     );
   }
 

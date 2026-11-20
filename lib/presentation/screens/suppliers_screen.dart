@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
@@ -45,18 +44,16 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       );
     }
     final csv = buf.toString();
-    final ok = await downloadTextFile(
-      filename: 'bolan_suppliers_ledger.csv',
-      content: csv,
-      mimeType: 'text/csv',
-    );
-    if (!mounted) return;
-    if (!ok) await Clipboard.setData(ClipboardData(text: csv));
-    if (!mounted) return;
-    showErpSnackBar(
+    await openExcelSheetViewer(
       context,
-      tr(isUrdu, 'Suppliers Excel (.csv) downloaded!',
-          'سپلائرز کھاتہ ایکسل (.csv) ڈاؤن لوڈ ہو گئی!'),
+      isUrdu: isUrdu,
+      filename: 'bolan_suppliers_ledger.csv',
+      sheetTitle: tr(
+        isUrdu,
+        'Fuel Suppliers Ledger — Excel Sheet View',
+        'تیل سپلائرز کھاتہ — ایکسل شیٹ ویو',
+      ),
+      csvContent: csv,
     );
   }
 

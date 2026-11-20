@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
@@ -58,18 +57,16 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       );
     }
     final csv = buf.toString();
-    final ok = await downloadTextFile(
-      filename: 'bolan_purchases_$_period.csv',
-      content: csv,
-      mimeType: 'text/csv',
-    );
-    if (!mounted) return;
-    if (!ok) await Clipboard.setData(ClipboardData(text: csv));
-    if (!mounted) return;
-    showErpSnackBar(
+    await openExcelSheetViewer(
       context,
-      tr(isUrdu, 'Purchases Excel (.csv) downloaded!',
-          'خریداری ایکسل (.csv) ڈاؤن لوڈ ہو گئی!'),
+      isUrdu: isUrdu,
+      filename: 'bolan_purchases_$_period.csv',
+      sheetTitle: tr(
+        isUrdu,
+        'Fuel Tanker Purchases — Excel Sheet View',
+        'تیل ٹینکر خریداری — ایکسل شیٹ ویو',
+      ),
+      csvContent: csv,
     );
   }
 

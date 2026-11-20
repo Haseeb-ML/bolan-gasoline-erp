@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
@@ -102,27 +101,17 @@ class _PurchaserDetailScreenState extends State<PurchaserDetailScreen> {
       rows: filteredRows,
     );
     final safeId = purchaser.id.toLowerCase();
-    final downloaded = await downloadTextFile(
+    await openExcelSheetViewer(
+      context,
+      isUrdu: isUrdu,
       filename: 'bolan_khata_${safeId}_$_periodFilter.csv',
-      content: csv,
-      mimeType: 'text/csv',
+      sheetTitle: tr(
+        isUrdu,
+        '${purchaser.nameEn} Khata Statement — Excel Sheet View',
+        '${purchaser.nameUr} کھاتہ اسٹیٹمنٹ — ایکسل شیٹ ویو',
+      ),
+      csvContent: csv,
     );
-    if (!mounted) return;
-    if (downloaded) {
-      showErpSnackBar(
-        context,
-        tr(isUrdu, 'Khata Excel (.csv) downloaded!',
-            'کھاتہ ایکسل (.csv) ڈاؤن لوڈ ہو گئی!'),
-      );
-    } else {
-      await Clipboard.setData(ClipboardData(text: csv));
-      if (!mounted) return;
-      showErpSnackBar(
-        context,
-        tr(isUrdu, 'Khata report copied to clipboard!',
-            'کھاتہ رپورٹ کلپ بورڈ پر کاپی ہو گئی!'),
-      );
-    }
   }
 
   Future<void> _downloadKhataPdf(
