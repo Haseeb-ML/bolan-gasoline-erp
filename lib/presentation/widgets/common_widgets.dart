@@ -1262,6 +1262,57 @@ Future<void> openExcelSheetViewer(
     headers = ['Column A'];
   }
   final colCount = headers.length;
+
+  // Auto-generate a TOTAL summary row if the CSV doesn't already end with one
+  final hasTotalRow = dataRows.isNotEmpty &&
+      dataRows.last.isNotEmpty &&
+      dataRows.last.first.toUpperCase().startsWith('TOTAL');
+  if (!hasTotalRow && dataRows.isNotEmpty && colCount > 1) {
+    final totalRow = List<String>.filled(colCount, '');
+    totalRow[0] = 'TOTAL (${dataRows.length} Records)';
+    bool anySummed = false;
+    for (int c = 1; c < colCount; c++) {
+      final h = headers[c].toLowerCase();
+      final isRateOrIdOrPhone = h.contains('rate') ||
+          h.contains('id') ||
+          h.contains('phone') ||
+          h.contains('date');
+      if (isRateOrIdOrPhone) continue;
+      double sum = 0;
+      int numericCount = 0;
+      for (final r in dataRows) {
+        if (c < r.length) {
+          final cleaned = r[c].replaceAll(RegExp(r'[^0-9.-]'), '');
+          final val = double.tryParse(cleaned);
+          if (val != null && cleaned.isNotEmpty) {
+            sum += val;
+            numericCount++;
+          }
+        }
+      }
+      if (numericCount == dataRows.length && numericCount > 0) {
+        anySummed = true;
+        if (h.contains('liter')) {
+          totalRow[c] = '${formatNumber(sum)} L';
+        } else if (h.contains('rs') ||
+            h.contains('bill') ||
+            h.contains('paid') ||
+            h.contains('due') ||
+            h.contains('balance') ||
+            h.contains('amount') ||
+            h.contains('purchased') ||
+            h.contains('payable')) {
+          totalRow[c] = formatRs(sum);
+        } else {
+          totalRow[c] = formatNumber(sum);
+        }
+      }
+    }
+    if (anySummed) {
+      dataRows.add(totalRow);
+    }
+  }
+
   const excelGreen = Color(0xFF107C41);
   const excelGreenDark = Color(0xFF0B5C2E);
   const excelGridBorder = Color(0xFFCBD5E1);
@@ -1288,29 +1339,28 @@ Future<void> openExcelSheetViewer(
 
   await showDialog<void>(
     context: context,
+    useSafeArea: false,
     builder: (ctx) {
       final erp = ctx.erp;
       final isMobile = MediaQuery.sizeOf(ctx).width < 640;
+      final recordCount = dataRows
+          .where((r) =>
+              r.isEmpty || !r.first.toUpperCase().startsWith('TOTAL'))
+          .length;
 
       return Directionality(
         textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
-        child: Dialog(
-          insetPadding: EdgeInsets.all(isMobile ? 10 : 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180, maxHeight: 760),
+        child: Dialog.fullscreen(
+          backgroundColor: erp.cardBg,
+          child: SafeArea(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. Microsoft Excel Style Top Green Ribbon Header
+                // 1. Microsoft Excel Style Top Green Ribbon Header (Full Screen)
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 12 : 18,
-                    vertical: isMobile ? 10 : 13,
+                    horizontal: isMobile ? 12 : 22,
+                    vertical: isMobile ? 10 : 14,
                   ),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
@@ -1318,7 +1368,7 @@ Future<void> openExcelSheetViewer(
                     ),
                   ),
                   child: Wrap(
-                    spacing: 10,
+                    spacing: 12,
                     runSpacing: 8,
                     alignment: WrapAlignment.spaceBetween,
                     crossAxisAlignment: WrapCrossAlignment.center,
@@ -1327,7 +1377,7 @@ Future<void> openExcelSheetViewer(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(7),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.16),
                               borderRadius: BorderRadius.circular(10),
@@ -1335,10 +1385,10 @@ Future<void> openExcelSheetViewer(
                             child: const Icon(
                               Icons.table_view_rounded,
                               color: Colors.white,
-                              size: 20,
+                              size: 22,
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Flexible(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1348,17 +1398,17 @@ Future<void> openExcelSheetViewer(
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: isMobile ? 14 : 15.5,
+                                    fontSize: isMobile ? 15 : 17,
                                     fontWeight: FontWeight.w900,
                                     color: Colors.white,
                                   ),
                                 ),
                                 LtrText(
-                                  '$filename  •  ${dataRows.length} Rows × $colCount Cols',
+                                  '$filename  •  $recordCount Records × $colCount Columns (Full Screen View)',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.white.withValues(alpha: 0.85),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                   ),
                                 ),
                               ],
@@ -1366,24 +1416,25 @@ Future<void> openExcelSheetViewer(
                           ),
                         ],
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           FilledButton.icon(
                             style: FilledButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: excelGreenDark,
-                              visualDensity: VisualDensity.compact,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
+                                horizontal: 16,
+                                vertical: 10,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(999),
                               ),
                             ),
                             onPressed: () => triggerFileDownload(ctx),
-                            icon: const Icon(Icons.download_rounded, size: 16),
+                            icon: const Icon(Icons.download_rounded, size: 17),
                             label: Text(
                               tr(
                                 isUrdu,
@@ -1391,19 +1442,33 @@ Future<void> openExcelSheetViewer(
                                 'ایکسل فائل ڈاؤن لوڈ کریں',
                               ),
                               style: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.5,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            tooltip: tr(isUrdu, 'Close', 'بند کریں'),
+                          FilledButton.tonalIcon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.16),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
                             onPressed: () => Navigator.of(ctx).pop(),
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: Colors.white,
+                            icon: const Icon(Icons.close_fullscreen_rounded,
+                                size: 16),
+                            label: Text(
+                              tr(isUrdu, 'Exit Full Screen', 'واپس جائیں'),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ],
@@ -1414,8 +1479,10 @@ Future<void> openExcelSheetViewer(
 
                 // 2. Classic Excel Formula Bar (A1 | fx)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 12 : 22,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: erp.subtleBg,
                     border: Border(
@@ -1426,7 +1493,7 @@ Future<void> openExcelSheetViewer(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                            horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
                           color: erp.cardBg,
                           borderRadius: BorderRadius.circular(6),
@@ -1435,31 +1502,29 @@ Future<void> openExcelSheetViewer(
                         child: const LtrText(
                           'A1',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w800,
                             color: excelGreen,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       const LtrText(
                         'fx',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontStyle: FontStyle.italic,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF64748B),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           subtitleInfo,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                             color: erp.textMain,
                           ),
                         ),
@@ -1468,144 +1533,170 @@ Future<void> openExcelSheetViewer(
                   ),
                 ),
 
-                // 3. Interactive In-App Excel Spreadsheet Grid
-                Flexible(
-                  child: Container(
-                    color: erp.cardBg,
-                    child: Scrollbar(
-                      thumbVisibility: true,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.vertical,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Directionality(
-                            textDirection: TextDirection.ltr,
-                            child: Table(
-                              defaultColumnWidth: const IntrinsicColumnWidth(),
-                              border: TableBorder.all(
-                                color: excelGridBorder,
-                                width: 1,
-                              ),
-                              children: [
-                                // Excel Column Letters Row (# | A | B | C | D...)
-                                TableRow(
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFE2E8F0),
-                                  ),
-                                  children: [
-                                    _ExcelCell(
-                                      text: '#',
-                                      isHeader: true,
-                                      align: TextAlign.center,
-                                      textColor: const Color(0xFF475569),
-                                      minWidth: 42,
-                                    ),
-                                    for (int c = 0; c < colCount; c++)
-                                      _ExcelCell(
-                                        text: _excelColumnLetter(c),
-                                        isHeader: true,
-                                        align: TextAlign.center,
-                                        textColor: const Color(0xFF475569),
-                                        minWidth: 105,
-                                      ),
-                                  ],
+                // 3. Full-Screen Interactive Excel Spreadsheet Grid (Complete Untruncated Columns)
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (_, boxConstraints) {
+                      final colWidths = <int, TableColumnWidth>{
+                        0: const FixedColumnWidth(48),
+                        for (int c = 0; c < colCount; c++)
+                          c + 1: const IntrinsicColumnWidth(flex: 1),
+                      };
+                      return Container(
+                        color: Colors.white,
+                        child: Scrollbar(
+                          thumbVisibility: true,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minWidth: boxConstraints.maxWidth,
                                 ),
-                                // Row 1: Column Titles Header Row
-                                TableRow(
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFDCFCE7),
-                                  ),
-                                  children: [
-                                    const _ExcelCell(
-                                      text: '1',
-                                      isHeader: true,
-                                      align: TextAlign.center,
-                                      textColor: excelGreenDark,
-                                      bgColor: Color(0xFFE2E8F0),
-                                      minWidth: 42,
+                                child: Directionality(
+                                  textDirection: TextDirection.ltr,
+                                  child: Table(
+                                    columnWidths: colWidths,
+                                    defaultVerticalAlignment:
+                                        TableCellVerticalAlignment.middle,
+                                    border: TableBorder.all(
+                                      color: excelGridBorder,
+                                      width: 1,
                                     ),
-                                    for (int c = 0; c < colCount; c++)
-                                      _ExcelCell(
-                                        text: headers[c],
-                                        isHeader: true,
-                                        textColor: excelGreenDark,
-                                        minWidth: 105,
-                                      ),
-                                  ],
-                                ),
-                                // Data Rows (Row 2..N)
-                                if (dataRows.isEmpty)
-                                  TableRow(
                                     children: [
-                                      const _ExcelCell(
-                                        text: '2',
-                                        align: TextAlign.center,
-                                        bgColor: Color(0xFFF1F5F9),
-                                        textColor: Color(0xFF64748B),
-                                        minWidth: 42,
-                                      ),
-                                      for (int c = 0; c < colCount; c++)
-                                        _ExcelCell(
-                                          text: c == 0
-                                              ? 'No records in current filter'
-                                              : '',
-                                          textColor: const Color(0xFF64748B),
-                                          minWidth: 105,
+                                      // Excel Column Letters Row (# | A | B | C | D...)
+                                      TableRow(
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFE2E8F0),
                                         ),
-                                    ],
-                                  )
-                                else
-                                  for (int r = 0; r < dataRows.length; r++)
-                                    TableRow(
-                                      decoration: BoxDecoration(
-                                        color: dataRows[r].isNotEmpty &&
-                                                dataRows[r]
-                                                    .first
-                                                    .toUpperCase()
-                                                    .startsWith('TOTAL')
-                                            ? const Color(0xFFFEF3C7)
-                                            : (r.isEven
-                                                ? Colors.white
-                                                : const Color(0xFFF8FAFC)),
-                                      ),
-                                      children: [
-                                        _ExcelCell(
-                                          text: '${r + 2}',
-                                          isHeader: true,
-                                          align: TextAlign.center,
-                                          bgColor: const Color(0xFFF1F5F9),
-                                          textColor: const Color(0xFF475569),
-                                          minWidth: 42,
-                                        ),
-                                        for (int c = 0; c < colCount; c++)
-                                          _ExcelCell(
-                                            text: c < dataRows[r].length
-                                                ? dataRows[r][c]
-                                                : '',
-                                            isHeader: dataRows[r].isNotEmpty &&
-                                                dataRows[r]
-                                                    .first
-                                                    .toUpperCase()
-                                                    .startsWith('TOTAL'),
-                                            textColor:
-                                                const Color(0xFF0F172A),
-                                            minWidth: 105,
+                                        children: [
+                                          const _ExcelCell(
+                                            text: '#',
+                                            isHeader: true,
+                                            align: TextAlign.center,
+                                            textColor: Color(0xFF334155),
+                                            minWidth: 48,
                                           ),
-                                      ],
-                                    ),
-                              ],
+                                          for (int c = 0; c < colCount; c++)
+                                            _ExcelCell(
+                                              text: _excelColumnLetter(c),
+                                              isHeader: true,
+                                              align: TextAlign.center,
+                                              textColor:
+                                                  const Color(0xFF334155),
+                                              minWidth: 110,
+                                            ),
+                                        ],
+                                      ),
+                                      // Row 1: Column Titles Header Row
+                                      TableRow(
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFDCFCE7),
+                                        ),
+                                        children: [
+                                          const _ExcelCell(
+                                            text: '1',
+                                            isHeader: true,
+                                            align: TextAlign.center,
+                                            textColor: excelGreenDark,
+                                            bgColor: Color(0xFFE2E8F0),
+                                            minWidth: 48,
+                                          ),
+                                          for (int c = 0; c < colCount; c++)
+                                            _ExcelCell(
+                                              text: headers[c],
+                                              isHeader: true,
+                                              textColor: excelGreenDark,
+                                              minWidth: 110,
+                                            ),
+                                        ],
+                                      ),
+                                      // Data Rows (Row 2..N)
+                                      if (dataRows.isEmpty)
+                                        TableRow(
+                                          children: [
+                                            const _ExcelCell(
+                                              text: '2',
+                                              align: TextAlign.center,
+                                              bgColor: Color(0xFFF1F5F9),
+                                              textColor: Color(0xFF64748B),
+                                              minWidth: 48,
+                                            ),
+                                            for (int c = 0; c < colCount; c++)
+                                              _ExcelCell(
+                                                text: c == 0
+                                                    ? 'No records in current filter'
+                                                    : '',
+                                                textColor:
+                                                    const Color(0xFF64748B),
+                                                minWidth: 110,
+                                              ),
+                                          ],
+                                        )
+                                      else
+                                        for (int r = 0;
+                                            r < dataRows.length;
+                                            r++)
+                                          TableRow(
+                                            decoration: BoxDecoration(
+                                              color: dataRows[r].isNotEmpty &&
+                                                      dataRows[r]
+                                                          .first
+                                                          .toUpperCase()
+                                                          .startsWith('TOTAL')
+                                                  ? const Color(0xFFFEF3C7)
+                                                  : (r.isEven
+                                                      ? Colors.white
+                                                      : const Color(
+                                                          0xFFF8FAFC)),
+                                            ),
+                                            children: [
+                                              _ExcelCell(
+                                                text: '${r + 2}',
+                                                isHeader: true,
+                                                align: TextAlign.center,
+                                                bgColor:
+                                                    const Color(0xFFF1F5F9),
+                                                textColor:
+                                                    const Color(0xFF475569),
+                                                minWidth: 48,
+                                              ),
+                                              for (int c = 0;
+                                                  c < colCount;
+                                                  c++)
+                                                _ExcelCell(
+                                                  text: c < dataRows[r].length
+                                                      ? dataRows[r][c]
+                                                      : '',
+                                                  isHeader: dataRows[r]
+                                                          .isNotEmpty &&
+                                                      dataRows[r]
+                                                          .first
+                                                          .toUpperCase()
+                                                          .startsWith('TOTAL'),
+                                                  textColor:
+                                                      const Color(0xFF0F172A),
+                                                  minWidth: 110,
+                                                ),
+                                            ],
+                                          ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
 
                 // 4. Bottom Excel Sheet Status Bar & Actions
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 12 : 18,
+                    horizontal: isMobile ? 12 : 22,
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
@@ -1622,22 +1713,22 @@ Future<void> openExcelSheetViewer(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: excelGreen, width: 1.4),
+                          border: Border.all(color: excelGreen, width: 1.5),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.grid_on_rounded,
-                                size: 14, color: excelGreen),
+                                size: 15, color: excelGreen),
                             const SizedBox(width: 6),
                             LtrText(
-                              'Sheet1  (${dataRows.length} Records)',
+                              'Sheet1  ($recordCount Records  •  $colCount Columns)',
                               style: const TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 color: excelGreenDark,
                               ),
@@ -1646,14 +1737,17 @@ Future<void> openExcelSheetViewer(
                         ),
                       ),
                       Wrap(
-                        spacing: 8,
+                        spacing: 10,
                         runSpacing: 8,
                         children: [
                           FilledButton.icon(
                             style: FilledButton.styleFrom(
                               backgroundColor: excelGreen,
                               foregroundColor: Colors.white,
-                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(999),
                               ),
@@ -1667,14 +1761,17 @@ Future<void> openExcelSheetViewer(
                                 'ایکسل ڈاؤن لوڈ کریں (.csv)',
                               ),
                               style: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.5,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
                           OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 10,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(999),
                               ),
@@ -1683,7 +1780,7 @@ Future<void> openExcelSheetViewer(
                             child: Text(
                               tr(isUrdu, 'Close', 'بند کریں'),
                               style: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -1722,16 +1819,15 @@ class _ExcelCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(minWidth: minWidth, maxWidth: 260),
+      constraints: BoxConstraints(minWidth: minWidth),
       color: bgColor,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       child: Text(
         text,
         textAlign: align,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
+        softWrap: true,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 12.5,
           fontWeight: isHeader ? FontWeight.w800 : FontWeight.w600,
           color: textColor ?? const Color(0xFF0F172A),
         ),
