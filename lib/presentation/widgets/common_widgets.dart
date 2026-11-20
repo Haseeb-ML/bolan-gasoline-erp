@@ -1313,10 +1313,6 @@ Future<void> openExcelSheetViewer(
     }
   }
 
-  const excelGreen = Color(0xFF107C41);
-  const excelGreenDark = Color(0xFF0B5C2E);
-  const excelGridBorder = Color(0xFFCBD5E1);
-
   Future<void> triggerFileDownload(BuildContext dialogCtx) async {
     final ok = await downloadTextFile(
       filename: filename,
@@ -1340,463 +1336,595 @@ Future<void> openExcelSheetViewer(
   await showDialog<void>(
     context: context,
     useSafeArea: false,
-    builder: (ctx) {
-      final erp = ctx.erp;
-      final isMobile = MediaQuery.sizeOf(ctx).width < 640;
-      final recordCount = dataRows
-          .where((r) =>
-              r.isEmpty || !r.first.toUpperCase().startsWith('TOTAL'))
-          .length;
+    builder: (ctx) => _FullScreenExcelDialog(
+      isUrdu: isUrdu,
+      filename: filename,
+      sheetTitle: sheetTitle,
+      subtitleInfo: subtitleInfo,
+      headers: headers,
+      dataRows: dataRows,
+      onDownloadFile: () => triggerFileDownload(ctx),
+    ),
+  );
+}
 
-      return Directionality(
-        textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
-        child: Dialog.fullscreen(
-          backgroundColor: erp.cardBg,
-          child: SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 1. Microsoft Excel Style Top Green Ribbon Header (Full Screen)
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 12 : 22,
-                    vertical: isMobile ? 10 : 14,
-                  ),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [excelGreen, excelGreenDark],
-                    ),
-                  ),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.table_view_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  sheetTitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: isMobile ? 15 : 17,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                LtrText(
-                                  '$filename  •  $recordCount Records × $colCount Columns (Full Screen View)',
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: excelGreenDark,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            onPressed: () => triggerFileDownload(ctx),
-                            icon: const Icon(Icons.download_rounded, size: 17),
-                            label: Text(
-                              tr(
-                                isUrdu,
-                                'Download Excel File (.csv)',
-                                'ایکسل فائل ڈاؤن لوڈ کریں',
-                              ),
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          FilledButton.tonalIcon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor:
-                                  Colors.white.withValues(alpha: 0.16),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            icon: const Icon(Icons.close_fullscreen_rounded,
-                                size: 16),
-                            label: Text(
-                              tr(isUrdu, 'Exit Full Screen', 'واپس جائیں'),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+class _FullScreenExcelDialog extends StatefulWidget {
+  const _FullScreenExcelDialog({
+    required this.isUrdu,
+    required this.filename,
+    required this.sheetTitle,
+    required this.subtitleInfo,
+    required this.headers,
+    required this.dataRows,
+    required this.onDownloadFile,
+  });
+
+  final bool isUrdu;
+  final String filename;
+  final String sheetTitle;
+  final String subtitleInfo;
+  final List<String> headers;
+  final List<List<String>> dataRows;
+  final VoidCallback onDownloadFile;
+
+  @override
+  State<_FullScreenExcelDialog> createState() => _FullScreenExcelDialogState();
+}
+
+class _FullScreenExcelDialogState extends State<_FullScreenExcelDialog> {
+  final ScrollController _horizontalCtrl = ScrollController();
+  final ScrollController _verticalCtrl = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalCtrl.dispose();
+    _verticalCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scrollHorizontalBy(double delta) {
+    if (!_horizontalCtrl.hasClients) return;
+    final target = (_horizontalCtrl.offset + delta).clamp(
+      0.0,
+      _horizontalCtrl.position.maxScrollExtent,
+    );
+    _horizontalCtrl.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final erp = context.erp;
+    final isUrdu = widget.isUrdu;
+    final isMobile = MediaQuery.sizeOf(context).width < 640;
+    final colCount = widget.headers.length;
+    final recordCount = widget.dataRows
+        .where(
+            (r) => r.isEmpty || !r.first.toUpperCase().startsWith('TOTAL'))
+        .length;
+
+    const excelGreen = Color(0xFF107C41);
+    const excelGreenDark = Color(0xFF0B5C2E);
+    const excelGridBorder = Color(0xFFCBD5E1);
+
+    return Directionality(
+      textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
+      child: Dialog.fullscreen(
+        backgroundColor: erp.cardBg,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. Microsoft Excel Style Top Green Ribbon Header (Full Screen)
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 22,
+                  vertical: isMobile ? 10 : 14,
+                ),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [excelGreen, excelGreenDark],
                   ),
                 ),
-
-                // 2. Classic Excel Formula Bar (A1 | fx)
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 12 : 22,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: erp.subtleBg,
-                    border: Border(
-                      bottom: BorderSide(color: erp.cardBorder),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: erp.cardBg,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: erp.cardBorder),
-                        ),
-                        child: const LtrText(
-                          'A1',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: excelGreen,
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.table_view_rounded,
+                            color: Colors.white,
+                            size: 22,
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.sheetTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: isMobile ? 15 : 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              LtrText(
+                                '${widget.filename}  •  $recordCount Records × $colCount Columns (Full Screen View)',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: excelGreenDark,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          onPressed: widget.onDownloadFile,
+                          icon: const Icon(Icons.download_rounded, size: 17),
+                          label: Text(
+                            tr(
+                              isUrdu,
+                              'Download Excel File (.csv)',
+                              'ایکسل فائل ڈاؤن لوڈ کریں',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        FilledButton.tonalIcon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.16),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close_fullscreen_rounded,
+                              size: 16),
+                          label: Text(
+                            tr(isUrdu, 'Exit Full Screen', 'واپس جائیں'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // 2. Classic Excel Formula Bar (A1 | fx) + Horizontal Scroll Controls
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 22,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: erp.subtleBg,
+                  border: Border(
+                    bottom: BorderSide(color: erp.cardBorder),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: erp.cardBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: erp.cardBorder),
                       ),
-                      const SizedBox(width: 12),
-                      const LtrText(
-                        'fx',
+                      child: const LtrText(
+                        'A1',
                         style: TextStyle(
-                          fontSize: 13,
-                          fontStyle: FontStyle.italic,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
+                          color: excelGreen,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          subtitleInfo,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: erp.textMain,
-                          ),
+                    ),
+                    const SizedBox(width: 12),
+                    const LtrText(
+                      'fx',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.subtitleInfo,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: erp.textMain,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    // Quick Horizontal Scroll Left / Right Buttons
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                      ),
+                      onPressed: () => _scrollHorizontalBy(-260),
+                      icon: const Icon(Icons.chevron_left_rounded, size: 16),
+                      label: Text(
+                        tr(isUrdu, 'Left', 'بائیں'),
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                      ),
+                      onPressed: () => _scrollHorizontalBy(260),
+                      icon: const Icon(Icons.chevron_right_rounded, size: 16),
+                      label: Text(
+                        tr(isUrdu, 'Right', 'دائیں'),
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
 
-                // 3. Full-Screen Interactive Excel Spreadsheet Grid (Complete Untruncated Columns)
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (_, boxConstraints) {
-                      final colWidths = <int, TableColumnWidth>{
-                        0: const FixedColumnWidth(48),
-                        for (int c = 0; c < colCount; c++)
-                          c + 1: const IntrinsicColumnWidth(flex: 1),
-                      };
-                      return Container(
-                        color: Colors.white,
-                        child: Scrollbar(
-                          thumbVisibility: true,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.vertical,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minWidth: boxConstraints.maxWidth,
-                                ),
-                                child: Directionality(
-                                  textDirection: TextDirection.ltr,
-                                  child: Table(
-                                    columnWidths: colWidths,
-                                    defaultVerticalAlignment:
-                                        TableCellVerticalAlignment.middle,
-                                    border: TableBorder.all(
-                                      color: excelGridBorder,
-                                      width: 1,
-                                    ),
-                                    children: [
-                                      // Excel Column Letters Row (# | A | B | C | D...)
-                                      TableRow(
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFE2E8F0),
-                                        ),
-                                        children: [
-                                          const _ExcelCell(
-                                            text: '#',
-                                            isHeader: true,
-                                            align: TextAlign.center,
-                                            textColor: Color(0xFF334155),
-                                            minWidth: 48,
-                                          ),
-                                          for (int c = 0; c < colCount; c++)
-                                            _ExcelCell(
-                                              text: _excelColumnLetter(c),
-                                              isHeader: true,
-                                              align: TextAlign.center,
-                                              textColor:
-                                                  const Color(0xFF334155),
-                                              minWidth: 110,
-                                            ),
-                                        ],
+              // 3. Full-Screen Interactive Excel Spreadsheet Grid with Pinned Bottom Horizontal Scrollbar
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (_, boxConstraints) {
+                    final colWidths = <int, TableColumnWidth>{
+                      0: const FixedColumnWidth(46),
+                      for (int c = 0; c < colCount; c++)
+                        c + 1: const IntrinsicColumnWidth(flex: 1),
+                    };
+                    return Container(
+                      color: Colors.white,
+                      child: RawScrollbar(
+                        controller: _horizontalCtrl,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        interactive: true,
+                        thickness: 14,
+                        radius: const Radius.circular(7),
+                        thumbColor: excelGreen.withValues(alpha: 0.78),
+                        trackColor: const Color(0xFFE2E8F0),
+                        trackBorderColor: const Color(0xFFCBD5E1),
+                        scrollbarOrientation: ScrollbarOrientation.bottom,
+                        notificationPredicate: (notif) =>
+                            notif.metrics.axis == Axis.horizontal,
+                        child: SingleChildScrollView(
+                          controller: _horizontalCtrl,
+                          scrollDirection: Axis.horizontal,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: boxConstraints.maxWidth,
+                            ),
+                            child: SizedBox(
+                              height: boxConstraints.maxHeight,
+                              child: RawScrollbar(
+                                controller: _verticalCtrl,
+                                thumbVisibility: true,
+                                trackVisibility: true,
+                                interactive: true,
+                                thickness: 12,
+                                radius: const Radius.circular(6),
+                                thumbColor:
+                                    const Color(0xFF64748B).withValues(alpha: 0.65),
+                                trackColor: const Color(0xFFF1F5F9),
+                                scrollbarOrientation:
+                                    ScrollbarOrientation.right,
+                                child: SingleChildScrollView(
+                                  controller: _verticalCtrl,
+                                  scrollDirection: Axis.vertical,
+                                  padding: const EdgeInsets.only(
+                                    right: 24,
+                                    bottom: 24,
+                                  ),
+                                  child: Directionality(
+                                    textDirection: TextDirection.ltr,
+                                    child: Table(
+                                      columnWidths: colWidths,
+                                      defaultVerticalAlignment:
+                                          TableCellVerticalAlignment.middle,
+                                      border: TableBorder.all(
+                                        color: excelGridBorder,
+                                        width: 1,
                                       ),
-                                      // Row 1: Column Titles Header Row
-                                      TableRow(
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFDCFCE7),
-                                        ),
-                                        children: [
-                                          const _ExcelCell(
-                                            text: '1',
-                                            isHeader: true,
-                                            align: TextAlign.center,
-                                            textColor: excelGreenDark,
-                                            bgColor: Color(0xFFE2E8F0),
-                                            minWidth: 48,
-                                          ),
-                                          for (int c = 0; c < colCount; c++)
-                                            _ExcelCell(
-                                              text: headers[c],
-                                              isHeader: true,
-                                              textColor: excelGreenDark,
-                                              minWidth: 110,
-                                            ),
-                                        ],
-                                      ),
-                                      // Data Rows (Row 2..N)
-                                      if (dataRows.isEmpty)
+                                      children: [
+                                        // Excel Column Letters Row (# | A | B | C | D...)
                                         TableRow(
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFE2E8F0),
+                                          ),
                                           children: [
                                             const _ExcelCell(
-                                              text: '2',
+                                              text: '#',
+                                              isHeader: true,
                                               align: TextAlign.center,
-                                              bgColor: Color(0xFFF1F5F9),
-                                              textColor: Color(0xFF64748B),
-                                              minWidth: 48,
+                                              textColor: Color(0xFF334155),
+                                              minWidth: 46,
                                             ),
                                             for (int c = 0; c < colCount; c++)
                                               _ExcelCell(
-                                                text: c == 0
-                                                    ? 'No records in current filter'
-                                                    : '',
-                                                textColor:
-                                                    const Color(0xFF64748B),
-                                                minWidth: 110,
-                                              ),
-                                          ],
-                                        )
-                                      else
-                                        for (int r = 0;
-                                            r < dataRows.length;
-                                            r++)
-                                          TableRow(
-                                            decoration: BoxDecoration(
-                                              color: dataRows[r].isNotEmpty &&
-                                                      dataRows[r]
-                                                          .first
-                                                          .toUpperCase()
-                                                          .startsWith('TOTAL')
-                                                  ? const Color(0xFFFEF3C7)
-                                                  : (r.isEven
-                                                      ? Colors.white
-                                                      : const Color(
-                                                          0xFFF8FAFC)),
-                                            ),
-                                            children: [
-                                              _ExcelCell(
-                                                text: '${r + 2}',
+                                                text: _excelColumnLetter(c),
                                                 isHeader: true,
                                                 align: TextAlign.center,
-                                                bgColor:
-                                                    const Color(0xFFF1F5F9),
                                                 textColor:
-                                                    const Color(0xFF475569),
-                                                minWidth: 48,
+                                                    const Color(0xFF334155),
+                                                minWidth: 74,
+                                              ),
+                                          ],
+                                        ),
+                                        // Row 1: Column Titles Header Row
+                                        TableRow(
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFDCFCE7),
+                                          ),
+                                          children: [
+                                            const _ExcelCell(
+                                              text: '1',
+                                              isHeader: true,
+                                              align: TextAlign.center,
+                                              textColor: excelGreenDark,
+                                              bgColor: Color(0xFFE2E8F0),
+                                              minWidth: 46,
+                                            ),
+                                            for (int c = 0; c < colCount; c++)
+                                              _ExcelCell(
+                                                text: widget.headers[c],
+                                                isHeader: true,
+                                                textColor: excelGreenDark,
+                                                minWidth: 74,
+                                              ),
+                                          ],
+                                        ),
+                                        // Data Rows (Row 2..N)
+                                        if (widget.dataRows.isEmpty)
+                                          TableRow(
+                                            children: [
+                                              const _ExcelCell(
+                                                text: '2',
+                                                align: TextAlign.center,
+                                                bgColor: Color(0xFFF1F5F9),
+                                                textColor: Color(0xFF64748B),
+                                                minWidth: 46,
                                               ),
                                               for (int c = 0;
                                                   c < colCount;
                                                   c++)
                                                 _ExcelCell(
-                                                  text: c < dataRows[r].length
-                                                      ? dataRows[r][c]
+                                                  text: c == 0
+                                                      ? 'No records in current filter'
                                                       : '',
-                                                  isHeader: dataRows[r]
-                                                          .isNotEmpty &&
-                                                      dataRows[r]
-                                                          .first
-                                                          .toUpperCase()
-                                                          .startsWith('TOTAL'),
                                                   textColor:
-                                                      const Color(0xFF0F172A),
-                                                  minWidth: 110,
+                                                      const Color(0xFF64748B),
+                                                  minWidth: 74,
                                                 ),
                                             ],
-                                          ),
-                                    ],
+                                          )
+                                        else
+                                          for (int r = 0;
+                                              r < widget.dataRows.length;
+                                              r++)
+                                            TableRow(
+                                              decoration: BoxDecoration(
+                                                color: widget.dataRows[r]
+                                                            .isNotEmpty &&
+                                                        widget.dataRows[r].first
+                                                            .toUpperCase()
+                                                            .startsWith('TOTAL')
+                                                    ? const Color(0xFFFEF3C7)
+                                                    : (r.isEven
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFFF8FAFC)),
+                                              ),
+                                              children: [
+                                                _ExcelCell(
+                                                  text: '${r + 2}',
+                                                  isHeader: true,
+                                                  align: TextAlign.center,
+                                                  bgColor:
+                                                      const Color(0xFFF1F5F9),
+                                                  textColor:
+                                                      const Color(0xFF475569),
+                                                  minWidth: 46,
+                                                ),
+                                                for (int c = 0;
+                                                    c < colCount;
+                                                    c++)
+                                                  _ExcelCell(
+                                                    text: c <
+                                                            widget.dataRows[r]
+                                                                .length
+                                                        ? widget.dataRows[r][c]
+                                                        : '',
+                                                    isHeader: widget.dataRows[r]
+                                                            .isNotEmpty &&
+                                                        widget.dataRows[r].first
+                                                            .toUpperCase()
+                                                            .startsWith(
+                                                                'TOTAL'),
+                                                    textColor: const Color(
+                                                        0xFF0F172A),
+                                                    minWidth: 74,
+                                                  ),
+                                              ],
+                                            ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      );
-                    },
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // 4. Bottom Excel Sheet Status Bar & Actions
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 22,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: erp.subtleBg,
+                  border: Border(
+                    top: BorderSide(color: erp.cardBorder),
                   ),
                 ),
-
-                // 4. Bottom Excel Sheet Status Bar & Actions
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 12 : 22,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: erp.subtleBg,
-                    border: Border(
-                      top: BorderSide(color: erp.cardBorder),
-                    ),
-                  ),
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: excelGreen, width: 1.5),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.grid_on_rounded,
-                                size: 15, color: excelGreen),
-                            const SizedBox(width: 6),
-                            LtrText(
-                              'Sheet1  ($recordCount Records  •  $colCount Columns)',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: excelGreenDark,
-                              ),
-                            ),
-                          ],
-                        ),
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: excelGreen, width: 1.5),
                       ),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 8,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: excelGreen,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            onPressed: () => triggerFileDownload(ctx),
-                            icon: const Icon(Icons.download_rounded, size: 16),
-                            label: Text(
-                              tr(
-                                isUrdu,
-                                'Download Excel (.csv)',
-                                'ایکسل ڈاؤن لوڈ کریں (.csv)',
-                              ),
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: Text(
-                              tr(isUrdu, 'Close', 'بند کریں'),
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          const Icon(Icons.grid_on_rounded,
+                              size: 15, color: excelGreen),
+                          const SizedBox(width: 6),
+                          LtrText(
+                            'Sheet1  ($recordCount Records  •  $colCount Columns)',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: excelGreenDark,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: excelGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          onPressed: widget.onDownloadFile,
+                          icon: const Icon(Icons.download_rounded, size: 16),
+                          label: Text(
+                            tr(
+                              isUrdu,
+                              'Download Excel (.csv)',
+                              'ایکسل ڈاؤن لوڈ کریں (.csv)',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text(
+                            tr(isUrdu, 'Close', 'بند کریں'),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
 }
 
 class _ExcelCell extends StatelessWidget {
