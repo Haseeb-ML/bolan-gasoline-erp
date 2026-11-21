@@ -845,18 +845,6 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: () {
-                      widget.store.loadDemoData();
-                      showErpSnackBar(
-                        context,
-                        tr(isUrdu, 'Sample demo data loaded!',
-                            'ڈیمو ڈیٹا لوڈ ہو گیا!'),
-                      );
-                    },
-                    icon: const Icon(Icons.restore_rounded, size: 18),
-                    label: Text(tr(isUrdu, 'Load Demo Data', 'ڈیمو ڈیٹا لوڈ')),
-                  ),
                 ],
               ),
             ],
