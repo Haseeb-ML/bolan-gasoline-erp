@@ -119,12 +119,47 @@ class _PurchaserDetailScreenState extends State<PurchaserDetailScreen> {
     List<LedgerHistoryRow> filteredRows,
   ) async {
     final isUrdu = widget.store.isUrdu;
-    final totalDebit = filteredRows.fold<double>(0, (s, r) => s + r.debit);
-    final totalCredit = filteredRows.fold<double>(0, (s, r) => s + r.credit);
-    final totalLiters =
-        filteredRows.fold<double>(0, (s, r) => s + (r.liters ?? 0));
-    final latestBal =
-        filteredRows.isNotEmpty ? filteredRows.first.runningBalance : 0.0;
+    final summary = widget.store.purchaserSummary(purchaser.id);
+    final isAll = _periodFilter == 'all' && _filterKind == 'all';
+    final totalDebit = isAll
+        ? summary.totalBilled
+        : filteredRows.fold<double>(0, (s, r) => s + r.debit);
+    final totalCredit = isAll
+        ? summary.totalPaid
+        : filteredRows.fold<double>(0, (s, r) => s + r.credit);
+    final totalLiters = isAll
+        ? summary.totalLiters
+        : filteredRows.fold<double>(0, (s, r) => s + (r.liters ?? 0));
+    final latestBal = isAll
+        ? summary.balance
+        : (filteredRows.isNotEmpty ? filteredRows.first.runningBalance : 0.0);
+
+    final pdfRows = filteredRows
+        .map((r) => [
+              r.id,
+              formatDateShort(r.date),
+              r.kind.toUpperCase(),
+              '${r.titleEn} (${r.detailEn})',
+              r.debit > 0 ? 'Rs.${r.debit.round()}' : '-',
+              r.credit > 0 ? 'Rs.${r.credit.round()}' : '-',
+              'Rs.${r.runningBalance.round()}',
+            ])
+        .toList();
+    if (isAll && (purchaser.openingBilled > 0 || purchaser.openingPaid > 0)) {
+      final openBal =
+          (purchaser.openingBilled - purchaser.openingPaid).clamp(0, double.infinity);
+      pdfRows.add([
+        'OPEN',
+        '-',
+        'OPENING',
+        'Opening Balance Brought Forward',
+        purchaser.openingBilled > 0
+            ? 'Rs.${purchaser.openingBilled.round()}'
+            : '-',
+        purchaser.openingPaid > 0 ? 'Rs.${purchaser.openingPaid.round()}' : '-',
+        'Rs.${openBal.round()}',
+      ]);
+    }
 
     final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
       reportTitle: 'PURCHASER PERSONAL KHATA STATEMENT - ${purchaser.nameEn}',
@@ -145,17 +180,7 @@ class _PurchaserDetailScreenState extends State<PurchaserDetailScreen> {
         'PAID (CR)',
         'BALANCE',
       ],
-      rows: filteredRows
-          .map((r) => [
-                r.id,
-                formatDateShort(r.date),
-                r.kind.toUpperCase(),
-                '${r.titleEn} (${r.detailEn})',
-                r.debit > 0 ? 'Rs.${r.debit.round()}' : '-',
-                r.credit > 0 ? 'Rs.${r.credit.round()}' : '-',
-                'Rs.${r.runningBalance.round()}',
-              ])
-          .toList(),
+      rows: pdfRows,
     );
     final safeId = purchaser.id.toLowerCase();
     await downloadBinaryFile(

@@ -99,12 +99,47 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
     List<LedgerHistoryRow> filteredRows,
   ) async {
     final isUrdu = widget.store.isUrdu;
-    final totalDebit = filteredRows.fold<double>(0, (s, r) => s + r.debit);
-    final totalCredit = filteredRows.fold<double>(0, (s, r) => s + r.credit);
-    final totalLiters =
-        filteredRows.fold<double>(0, (s, r) => s + (r.liters ?? 0));
-    final latestBal =
-        filteredRows.isNotEmpty ? filteredRows.first.runningBalance : 0.0;
+    final summary = widget.store.supplierSummary(supplier.id);
+    final isAll = _periodFilter == 'all' && _filterKind == 'all';
+    final totalDebit = isAll
+        ? summary.totalBilled
+        : filteredRows.fold<double>(0, (s, r) => s + r.debit);
+    final totalCredit = isAll
+        ? summary.totalPaid
+        : filteredRows.fold<double>(0, (s, r) => s + r.credit);
+    final totalLiters = isAll
+        ? summary.totalLiters
+        : filteredRows.fold<double>(0, (s, r) => s + (r.liters ?? 0));
+    final latestBal = isAll
+        ? summary.balance
+        : (filteredRows.isNotEmpty ? filteredRows.first.runningBalance : 0.0);
+
+    final pdfRows = filteredRows
+        .map((r) => [
+              r.id,
+              formatDateShort(r.date),
+              r.kind.toUpperCase(),
+              '${r.titleEn} (${r.detailEn})',
+              r.debit > 0 ? 'Rs.${r.debit.round()}' : '-',
+              r.credit > 0 ? 'Rs.${r.credit.round()}' : '-',
+              'Rs.${r.runningBalance.round()}',
+            ])
+        .toList();
+    if (isAll && (supplier.openingPurchased > 0 || supplier.openingPaid > 0)) {
+      final openBal =
+          (supplier.openingPurchased - supplier.openingPaid).clamp(0, double.infinity);
+      pdfRows.add([
+        'OPEN',
+        '-',
+        'OPENING',
+        'Opening Balance Brought Forward',
+        supplier.openingPurchased > 0
+            ? 'Rs.${supplier.openingPurchased.round()}'
+            : '-',
+        supplier.openingPaid > 0 ? 'Rs.${supplier.openingPaid.round()}' : '-',
+        'Rs.${openBal.round()}',
+      ]);
+    }
 
     final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
       reportTitle: 'SUPPLIER ACCOUNT & TANKER STATEMENT - ${supplier.nameEn}',
@@ -125,17 +160,7 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
         'PAID (CR)',
         'PAYABLE BAL',
       ],
-      rows: filteredRows
-          .map((r) => [
-                r.id,
-                formatDateShort(r.date),
-                r.kind.toUpperCase(),
-                '${r.titleEn} (${r.detailEn})',
-                r.debit > 0 ? 'Rs.${r.debit.round()}' : '-',
-                r.credit > 0 ? 'Rs.${r.credit.round()}' : '-',
-                'Rs.${r.runningBalance.round()}',
-              ])
-          .toList(),
+      rows: pdfRows,
     );
     final safeId = supplier.id.toLowerCase();
     await downloadBinaryFile(

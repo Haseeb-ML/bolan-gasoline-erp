@@ -148,24 +148,33 @@ class ErpPdfGenerator {
       y = boxBottom - 22.0;
     }
 
-    // Table Header Bar
+    // Table Header Bar (Smart proportional column widths so Supplier/Purchaser/Description never get starved!)
     final colCount = headers.isEmpty ? 1 : headers.length;
-    final tableWidth = 531.0;
-    final colWidth = tableWidth / colCount;
-    final maxCharsPerCol = (colWidth / 4.8).floor().clamp(6, 36);
+    const double tableWidth = 531.0;
+    final weights = headers.map(_columnWeight).toList();
+    final totalWeight =
+        weights.isEmpty ? 1.0 : weights.fold<double>(0, (s, w) => s + w);
+    final colWidths =
+        weights.map((w) => tableWidth * (w / totalWeight)).toList();
+    final colStarts = <double>[];
+    double cursorX = 38.0;
+    for (int c = 0; c < colWidths.length; c++) {
+      colStarts.add(cursorX);
+      cursorX += colWidths[c];
+    }
 
     s.writeln('0.09 0.09 0.11 rg');
     s.writeln('32 ${y.toStringAsFixed(1)} 531 20 re f');
     s.writeln('1 1 1 rg');
     for (int c = 0; c < headers.length; c++) {
-      final x = 38 + (c * colWidth);
+      final maxChars = ((colWidths[c] - 6) / 4.5).floor().clamp(5, 48);
       s.writeln(
         _textCmd(
-          x,
+          colStarts[c],
           y + 6,
           'F2',
-          8,
-          _truncate(_cleanAscii(headers[c]).toUpperCase(), maxCharsPerCol),
+          7.8,
+          _truncate(_cleanAscii(headers[c]).toUpperCase(), maxChars),
         ),
       );
     }
@@ -188,14 +197,14 @@ class ErpPdfGenerator {
 
         s.writeln('0.10 0.12 0.16 rg');
         for (int c = 0; c < row.length && c < colCount; c++) {
-          final x = 38 + (c * colWidth);
+          final maxChars = ((colWidths[c] - 6) / 4.4).floor().clamp(5, 48);
           s.writeln(
             _textCmd(
-              x,
+              colStarts[c],
               y + 6,
               c == 0 ? 'F2' : 'F1',
-              8,
-              _truncate(_cleanAscii(row[c]), maxCharsPerCol),
+              7.8,
+              _truncate(_cleanAscii(row[c]), maxChars),
             ),
           );
         }
@@ -243,6 +252,31 @@ class ErpPdfGenerator {
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
     return asciiOnly.isEmpty ? '-' : asciiOnly;
+  }
+
+  static double _columnWeight(String header) {
+    final h = header.toUpperCase();
+    if (h.contains('DESCRIPTION') ||
+        h.contains('DETAIL') ||
+        h.contains('SUPPLIER') ||
+        h.contains('PURCHASER') ||
+        h.contains('NOTE')) {
+      return 2.1;
+    }
+    if (h.contains('CATEGORY') || h.contains('SOURCE') || h.contains('PHONE')) {
+      return 1.35;
+    }
+    if (h.contains('TOTAL') ||
+        h.contains('PAID') ||
+        h.contains('BALANCE') ||
+        h.contains('PAYABLE') ||
+        h.contains('PURCHASED') ||
+        h.contains('BILLED') ||
+        h.contains('AMOUNT') ||
+        h.contains('DATE')) {
+      return 1.1;
+    }
+    return 0.72;
   }
 
   static String _truncate(String s, int maxLen) {
