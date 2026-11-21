@@ -360,5 +360,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.cashBankTransfers.length, 1);
     expect(tester.takeException(), isNull);
+
+    // 10. Test Auto / Manual (dd-mm-yyyy with auto-dash) Date Option in New Fuel Sale!
+    store.setModule(ErpModule.sales);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('New Fuel Sale'));
+    await tester.pumpAndSettle();
+    expect(find.text('Manual (dd-mm-yyyy)'), findsOneWidget);
+    await tester.tap(find.text('Manual (dd-mm-yyyy)'));
+    await tester.pumpAndSettle();
+    final dateInput = find.byWidgetPredicate(
+      (w) =>
+          w is TextField &&
+          (w.decoration?.hintText?.contains('dd-mm-yyyy') ?? false),
+    );
+    expect(dateInput, findsOneWidget);
+    await tester.enterText(dateInput, '15112026');
+    await tester.pumpAndSettle();
+    // Auto-dash formatter must format 15112026 -> 15-11-2026!
+    expect(find.text('15-11-2026'), findsOneWidget);
+    await tester.tap(find.text('Save Sale'));
+    await tester.pumpAndSettle();
+    expect(store.sales.first.date.year, 2026);
+    expect(store.sales.first.date.month, 11);
+    expect(store.sales.first.date.day, 15);
+    expect(tester.takeException(), isNull);
   });
 }

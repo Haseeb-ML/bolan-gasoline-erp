@@ -34,6 +34,7 @@ Future<void> showPurchaseFormDialog(
   FuelType selectedFuel = existing?.fuel ?? FuelType.petrol;
   String selectedMethod =
       ErpStore.normalizeMethod(existing?.paymentMethod ?? 'Cash');
+  DateTime selectedDate = existing?.date ?? DateTime.now();
   final litersCtrl = TextEditingController(
       text: (existing?.liters ?? 5000).toStringAsFixed(0));
   final rateCtrl = TextEditingController(
@@ -314,6 +315,13 @@ Future<void> showPurchaseFormDialog(
                       ],
                     ),
                     const SizedBox(height: 14),
+                    ErpDateEntryField(
+                      isUrdu: isUrdu,
+                      initialDate: selectedDate,
+                      isEdit: isEdit,
+                      onChanged: (d) => selectedDate = d,
+                    ),
+                    const SizedBox(height: 14),
                     Text(
                       tr(isUrdu, 'Tanker / Slip Note', 'ٹینکر / پرچی نوٹ'),
                       style: TextStyle(
@@ -384,6 +392,7 @@ Future<void> showPurchaseFormDialog(
                             if (isEdit) {
                               store.updateFuelPurchase(
                                 existing.copyWith(
+                                  date: selectedDate,
                                   supplierId: selectedSupplierId,
                                   fuel: selectedFuel,
                                   liters: l,
@@ -402,6 +411,7 @@ Future<void> showPurchaseFormDialog(
                                 paid: p,
                                 paymentMethod: selectedMethod,
                                 note: noteCtrl.text.trim(),
+                                date: selectedDate,
                               );
                             }
                             Navigator.of(ctx).pop();

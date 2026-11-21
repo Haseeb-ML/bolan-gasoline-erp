@@ -25,6 +25,7 @@ Future<void> showSaleFormDialog(
   FuelType selectedFuel = existing?.fuel ?? FuelType.diesel;
   String selectedMethod =
       ErpStore.normalizeMethod(existing?.paymentMethod ?? 'Cash');
+  DateTime selectedDate = existing?.date ?? DateTime.now();
   final initialPurchaser = store.findPurchaser(selectedPurchaserId)!;
   final initialRate = existing?.rateUsed ?? initialPurchaser.rateFor(selectedFuel);
   final initialLiters = existing?.liters ?? 200;
@@ -362,6 +363,13 @@ Future<void> showSaleFormDialog(
                       ],
                     ),
                     const SizedBox(height: 14),
+                    ErpDateEntryField(
+                      isUrdu: isUrdu,
+                      initialDate: selectedDate,
+                      isEdit: isEdit,
+                      onChanged: (d) => selectedDate = d,
+                    ),
+                    const SizedBox(height: 14),
                     Text(
                       tr(isUrdu, 'Note (Optional)', 'نوٹ / تفصیل (اختیاری)'),
                       style: TextStyle(
@@ -446,6 +454,7 @@ Future<void> showSaleFormDialog(
                             if (isEdit) {
                               store.updateFuelSale(
                                 existing.copyWith(
+                                  date: selectedDate,
                                   purchaserId: selectedPurchaserId,
                                   fuel: selectedFuel,
                                   liters: l,
@@ -464,6 +473,7 @@ Future<void> showSaleFormDialog(
                                 paidNow: p,
                                 paymentMethod: selectedMethod,
                                 note: noteCtrl.text.trim(),
+                                date: selectedDate,
                               );
                             }
                             Navigator.of(ctx).pop();

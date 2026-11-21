@@ -123,6 +123,7 @@ class _CashBankScreenState extends State<CashBankScreen> {
     final amountCtrl = TextEditingController(text: '50000');
     final noteCtrl = TextEditingController();
     String fromAccount = 'Cash';
+    DateTime selectedDate = DateTime.now();
     final formKey = GlobalKey<FormState>();
 
     await showDialog<void>(
@@ -213,6 +214,13 @@ class _CashBankScreenState extends State<CashBankScreen> {
                               'مثلاً کاؤنٹر کیش بینک میں جمع'),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      ErpDateEntryField(
+                        isUrdu: isUrdu,
+                        initialDate: selectedDate,
+                        isEdit: false,
+                        onChanged: (d) => selectedDate = d,
+                      ),
                       const SizedBox(height: 18),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -236,6 +244,7 @@ class _CashBankScreenState extends State<CashBankScreen> {
                                 toAccount: toAccount,
                                 amount: double.parse(amountCtrl.text.trim()),
                                 note: noteCtrl.text.trim(),
+                                date: selectedDate,
                               );
                               Navigator.of(ctx).pop();
                               showErpSnackBar(

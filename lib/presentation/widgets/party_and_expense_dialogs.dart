@@ -394,6 +394,7 @@ Future<void> showExpenseFormDialog(
       text: (existing?.amount ?? 15000).toStringAsFixed(0));
   String selectedMethod =
       ErpStore.normalizeMethod(existing?.paymentMethod ?? 'Cash');
+  DateTime selectedDate = existing?.date ?? DateTime.now();
   final formKey = GlobalKey<FormState>();
 
   await showDialog<void>(
@@ -608,6 +609,13 @@ Future<void> showExpenseFormDialog(
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    ErpDateEntryField(
+                      isUrdu: isUrdu,
+                      initialDate: selectedDate,
+                      isEdit: isEdit,
+                      onChanged: (d) => selectedDate = d,
+                    ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -638,6 +646,7 @@ Future<void> showExpenseFormDialog(
                             if (isEdit) {
                               store.updateExpense(
                                 existing.copyWith(
+                                  date: selectedDate,
                                   categoryEn: catMap['en']!,
                                   categoryUr: catMap['ur'] ?? catMap['en']!,
                                   titleEn: detail,
@@ -654,6 +663,7 @@ Future<void> showExpenseFormDialog(
                                 titleUr: detail,
                                 amount: amt,
                                 paymentMethod: selectedMethod,
+                                date: selectedDate,
                               );
                             }
                             Navigator.of(ctx).pop();
@@ -708,6 +718,7 @@ Future<void> showLedgerPaymentDialog(
   );
   final noteCtrl = TextEditingController(text: existing?.note ?? '');
   String method = existing?.method ?? 'Cash';
+  DateTime selectedDate = existing?.date ?? DateTime.now();
   final formKey = GlobalKey<FormState>();
 
   await showDialog<void>(
@@ -840,6 +851,13 @@ Future<void> showLedgerPaymentDialog(
                             tr(isUrdu, 'Note (Optional)', 'نوٹ (اختیاری)'),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    ErpDateEntryField(
+                      isUrdu: isUrdu,
+                      initialDate: selectedDate,
+                      isEdit: isEdit,
+                      onChanged: (d) => selectedDate = d,
+                    ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -863,6 +881,7 @@ Future<void> showLedgerPaymentDialog(
                             if (isEdit) {
                               store.updateLedgerPayment(
                                 existing.copyWith(
+                                  date: selectedDate,
                                   amount: amt,
                                   method: method,
                                   note: noteCtrl.text.trim(),
@@ -875,6 +894,7 @@ Future<void> showLedgerPaymentDialog(
                                 amount: amt,
                                 method: method,
                                 note: noteCtrl.text.trim(),
+                                date: selectedDate,
                               );
                             }
                             Navigator.of(ctx).pop();

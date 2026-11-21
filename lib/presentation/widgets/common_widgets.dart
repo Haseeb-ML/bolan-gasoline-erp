@@ -1963,3 +1963,219 @@ class _ExcelCell extends StatelessWidget {
     );
   }
 }
+
+String formatDateDdMmYyyy(DateTime d) {
+  final dd = d.day.toString().padLeft(2, '0');
+  final mm = d.month.toString().padLeft(2, '0');
+  final yyyy = d.year.toString().padLeft(4, '0');
+  return '$dd-$mm-$yyyy';
+}
+
+DateTime? parseDdMmYyyy(String input, {DateTime? timeSource}) {
+  final match = RegExp(r'^(\d{2})-(\d{2})-(\d{4})$').firstMatch(input.trim());
+  if (match == null) return null;
+  final day = int.tryParse(match.group(1)!);
+  final month = int.tryParse(match.group(2)!);
+  final year = int.tryParse(match.group(3)!);
+  if (day == null || month == null || year == null) return null;
+  if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  final ts = timeSource ?? DateTime.now();
+  final dt = DateTime(year, month, day, ts.hour, ts.minute, ts.second);
+  if (dt.year != year || dt.month != month || dt.day != day) {
+    return null;
+  }
+  return dt;
+}
+
+class _DdMmYyyyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final clamped =
+        digitsOnly.length > 8 ? digitsOnly.substring(0, 8) : digitsOnly;
+    final buf = StringBuffer();
+    for (int i = 0; i < clamped.length; i++) {
+      if (i == 2 || i == 4) buf.write('-');
+      buf.write(clamped[i]);
+    }
+    final formatted = buf.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+/// Reusable Auto / Manual (dd-mm-yyyy with auto-dashes) Date selector for all create/edit forms.
+class ErpDateEntryField extends StatefulWidget {
+  const ErpDateEntryField({
+    super.key,
+    required this.isUrdu,
+    required this.initialDate,
+    required this.isEdit,
+    required this.onChanged,
+  });
+
+  final bool isUrdu;
+  final DateTime initialDate;
+  final bool isEdit;
+  final ValueChanged<DateTime> onChanged;
+
+  @override
+  State<ErpDateEntryField> createState() => _ErpDateEntryFieldState();
+}
+
+class _ErpDateEntryFieldState extends State<ErpDateEntryField> {
+  late bool _isAuto;
+  late TextEditingController _dateCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _isAuto = !widget.isEdit;
+    _dateCtrl =
+        TextEditingController(text: formatDateDdMmYyyy(widget.initialDate));
+  }
+
+  @override
+  void dispose() {
+    _dateCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final erp = context.erp;
+    final isUrdu = widget.isUrdu;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          tr(isUrdu, 'Date (Auto / Manual dd-mm-yyyy)',
+              'تاریخ (خودکار / دستی dd-mm-yyyy)'),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: erp.textMain,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            ChoiceChip(
+              visualDensity: VisualDensity.compact,
+              avatar: Icon(
+                Icons.autorenew_rounded,
+                size: 15,
+                color: _isAuto ? erp.primary : erp.textMuted,
+              ),
+              label: Text(
+                tr(isUrdu, 'Auto (${formatDateDdMmYyyy(DateTime.now())})',
+                    'خودکار (${formatDateDdMmYyyy(DateTime.now())})'),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+              selected: _isAuto,
+              onSelected: (_) {
+                setState(() {
+                  _isAuto = true;
+                  final now = DateTime.now();
+                  _dateCtrl.text = formatDateDdMmYyyy(now);
+                  widget.onChanged(now);
+                });
+              },
+            ),
+            ChoiceChip(
+              visualDensity: VisualDensity.compact,
+              avatar: Icon(
+                Icons.edit_calendar_rounded,
+                size: 15,
+                color: !_isAuto ? erp.primary : erp.textMuted,
+              ),
+              label: Text(
+                tr(isUrdu, 'Manual (dd-mm-yyyy)', 'دستی (dd-mm-yyyy)'),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+              selected: !_isAuto,
+              onSelected: (_) {
+                setState(() => _isAuto = false);
+              },
+            ),
+          ],
+        ),
+        if (!_isAuto) ...[
+          const SizedBox(height: 8),
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: TextFormField(
+              controller: _dateCtrl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [_DdMmYyyyInputFormatter()],
+              decoration: InputDecoration(
+                hintText: 'dd-mm-yyyy (e.g. 21-11-2026)',
+                prefixIcon: const Icon(Icons.calendar_today_rounded, size: 17),
+                suffixIcon: IconButton(
+                  tooltip: tr(isUrdu, 'Pick from Calendar', 'کیلنڈر سے منتخب کریں'),
+                  icon: Icon(Icons.date_range_rounded, color: erp.primary),
+                  onPressed: () async {
+                    final current = parseDdMmYyyy(_dateCtrl.text,
+                            timeSource: widget.initialDate) ??
+                        DateTime.now();
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: current,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null && mounted) {
+                      final now = DateTime.now();
+                      final combined = DateTime(
+                        picked.year,
+                        picked.month,
+                        picked.day,
+                        now.hour,
+                        now.minute,
+                        now.second,
+                      );
+                      setState(() {
+                        _dateCtrl.text = formatDateDdMmYyyy(combined);
+                      });
+                      widget.onChanged(combined);
+                    }
+                  },
+                ),
+              ),
+              onChanged: (val) {
+                final parsed =
+                    parseDdMmYyyy(val, timeSource: widget.initialDate);
+                if (parsed != null) {
+                  widget.onChanged(parsed);
+                }
+              },
+              validator: (val) {
+                if (_isAuto) return null;
+                final parsed =
+                    parseDdMmYyyy(val ?? '', timeSource: widget.initialDate);
+                if (parsed == null) {
+                  return tr(
+                    isUrdu,
+                    'Enter valid date in dd-mm-yyyy format',
+                    'درست تاریخ dd-mm-yyyy فارمیٹ میں درج کریں',
+                  );
+                }
+                return null;
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
