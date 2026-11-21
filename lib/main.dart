@@ -9,8 +9,13 @@ import 'presentation/shell/erp_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final host = Uri.base.host.toLowerCase();
+  final isLocalDev = host == 'localhost' || host == '127.0.0.1';
   final store = ErpStore(
-    cloudSync: FirestoreSyncService(enabled: true),
+    cloudSync: FirestoreSyncService(
+      enabled: true,
+      documentId: isLocalDev ? 'dev_staging_state' : 'main_state',
+    ),
   );
   await store.init();
   runApp(BolanGasolineApp(store: store));

@@ -205,61 +205,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 18),
-            // Quick test credentials helper (Owner can change password inside Settings)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: erp.subtleBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: erp.cardBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tr(isUrdu, 'Default Logins (Change in Settings):',
-                        'ڈیفالٹ لاگ ان (سیٹنگز سے تبدیل کریں):'),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: erp.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      ActionChip(
-                        avatar: Icon(Icons.shield_rounded,
-                            size: 15, color: erp.primary),
-                        label: const LtrText('owner / 1234',
-                            style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w700)),
-                        onPressed: () {
-                          _userCtrl.text = 'owner';
-                          _passCtrl.text = '1234';
-                          setState(() => _errorMsg = null);
-                        },
-                      ),
-                      ActionChip(
-                        avatar: Icon(Icons.badge_outlined,
-                            size: 15, color: erp.success),
-                        label: const LtrText('staff / 1234',
-                            style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w700)),
-                        onPressed: () {
-                          _userCtrl.text = 'staff';
-                          _passCtrl.text = '1234';
-                          setState(() => _errorMsg = null);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
