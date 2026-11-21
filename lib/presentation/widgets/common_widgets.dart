@@ -2031,13 +2031,11 @@ class ErpDateEntryField extends StatefulWidget {
 }
 
 class _ErpDateEntryFieldState extends State<ErpDateEntryField> {
-  late bool _isAuto;
   late TextEditingController _dateCtrl;
 
   @override
   void initState() {
     super.initState();
-    _isAuto = !widget.isEdit;
     _dateCtrl =
         TextEditingController(text: formatDateDdMmYyyy(widget.initialDate));
   }
@@ -2052,12 +2050,14 @@ class _ErpDateEntryFieldState extends State<ErpDateEntryField> {
   Widget build(BuildContext context) {
     final erp = context.erp;
     final isUrdu = widget.isUrdu;
+    final todayStr = formatDateDdMmYyyy(DateTime.now());
+    final isToday = _dateCtrl.text.trim() == todayStr;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          tr(isUrdu, 'Date (Auto / Manual dd-mm-yyyy)',
-              'تاریخ (خودکار / دستی dd-mm-yyyy)'),
+          tr(isUrdu, 'Date (dd-mm-yyyy)', 'تاریخ (dd-mm-yyyy)'),
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -2065,116 +2065,117 @@ class _ErpDateEntryFieldState extends State<ErpDateEntryField> {
           ),
         ),
         const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            ChoiceChip(
-              visualDensity: VisualDensity.compact,
-              avatar: Icon(
-                Icons.autorenew_rounded,
-                size: 15,
-                color: _isAuto ? erp.primary : erp.textMuted,
-              ),
-              label: Text(
-                tr(isUrdu, 'Auto (${formatDateDdMmYyyy(DateTime.now())})',
-                    'خودکار (${formatDateDdMmYyyy(DateTime.now())})'),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-              selected: _isAuto,
-              onSelected: (_) {
-                setState(() {
-                  _isAuto = true;
-                  final now = DateTime.now();
-                  _dateCtrl.text = formatDateDdMmYyyy(now);
-                  widget.onChanged(now);
-                });
-              },
-            ),
-            ChoiceChip(
-              visualDensity: VisualDensity.compact,
-              avatar: Icon(
-                Icons.edit_calendar_rounded,
-                size: 15,
-                color: !_isAuto ? erp.primary : erp.textMuted,
-              ),
-              label: Text(
-                tr(isUrdu, 'Manual (dd-mm-yyyy)', 'دستی (dd-mm-yyyy)'),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-              selected: !_isAuto,
-              onSelected: (_) {
-                setState(() => _isAuto = false);
-              },
-            ),
-          ],
-        ),
-        if (!_isAuto) ...[
-          const SizedBox(height: 8),
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: TextFormField(
-              controller: _dateCtrl,
-              keyboardType: TextInputType.number,
-              inputFormatters: [_DdMmYyyyInputFormatter()],
-              decoration: InputDecoration(
-                hintText: 'dd-mm-yyyy (e.g. 21-11-2026)',
-                prefixIcon: const Icon(Icons.calendar_today_rounded, size: 17),
-                suffixIcon: IconButton(
-                  tooltip: tr(isUrdu, 'Pick from Calendar', 'کیلنڈر سے منتخب کریں'),
-                  icon: Icon(Icons.date_range_rounded, color: erp.primary),
-                  onPressed: () async {
-                    final current = parseDdMmYyyy(_dateCtrl.text,
-                            timeSource: widget.initialDate) ??
-                        DateTime.now();
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: current,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null && mounted) {
-                      final now = DateTime.now();
-                      final combined = DateTime(
-                        picked.year,
-                        picked.month,
-                        picked.day,
-                        now.hour,
-                        now.minute,
-                        now.second,
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: TextFormField(
+            controller: _dateCtrl,
+            keyboardType: TextInputType.number,
+            inputFormatters: [_DdMmYyyyInputFormatter()],
+            decoration: InputDecoration(
+              hintText: 'dd-mm-yyyy',
+              prefixIcon: const Icon(Icons.calendar_today_rounded, size: 17),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isToday)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onPressed: () {
+                        final now = DateTime.now();
+                        setState(() {
+                          _dateCtrl.text = formatDateDdMmYyyy(now);
+                        });
+                        widget.onChanged(now);
+                      },
+                      child: Text(
+                        tr(isUrdu, 'Today', 'آج'),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: erp.primary,
+                        ),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: erp.successSoft,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          tr(isUrdu, 'Auto', 'آج'),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: erp.success,
+                          ),
+                        ),
+                      ),
+                    ),
+                  IconButton(
+                    tooltip:
+                        tr(isUrdu, 'Pick from Calendar', 'کیلنڈر سے منتخب کریں'),
+                    icon: Icon(Icons.date_range_rounded,
+                        size: 19, color: erp.primary),
+                    onPressed: () async {
+                      final current = parseDdMmYyyy(_dateCtrl.text,
+                              timeSource: widget.initialDate) ??
+                          DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: current,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
                       );
-                      setState(() {
-                        _dateCtrl.text = formatDateDdMmYyyy(combined);
-                      });
-                      widget.onChanged(combined);
-                    }
-                  },
-                ),
+                      if (picked != null && mounted) {
+                        final now = DateTime.now();
+                        final combined = DateTime(
+                          picked.year,
+                          picked.month,
+                          picked.day,
+                          now.hour,
+                          now.minute,
+                          now.second,
+                        );
+                        setState(() {
+                          _dateCtrl.text = formatDateDdMmYyyy(combined);
+                        });
+                        widget.onChanged(combined);
+                      }
+                    },
+                  ),
+                ],
               ),
-              onChanged: (val) {
-                final parsed =
-                    parseDdMmYyyy(val, timeSource: widget.initialDate);
-                if (parsed != null) {
-                  widget.onChanged(parsed);
-                }
-              },
-              validator: (val) {
-                if (_isAuto) return null;
-                final parsed =
-                    parseDdMmYyyy(val ?? '', timeSource: widget.initialDate);
-                if (parsed == null) {
-                  return tr(
-                    isUrdu,
-                    'Enter valid date in dd-mm-yyyy format',
-                    'درست تاریخ dd-mm-yyyy فارمیٹ میں درج کریں',
-                  );
-                }
-                return null;
-              },
             ),
+            onChanged: (val) {
+              setState(() {});
+              final parsed =
+                  parseDdMmYyyy(val, timeSource: widget.initialDate);
+              if (parsed != null) {
+                widget.onChanged(parsed);
+              }
+            },
+            validator: (val) {
+              final parsed =
+                  parseDdMmYyyy(val ?? '', timeSource: widget.initialDate);
+              if (parsed == null) {
+                return tr(
+                  isUrdu,
+                  'Enter valid date (dd-mm-yyyy)',
+                  'درست تاریخ درج کریں (dd-mm-yyyy)',
+                );
+              }
+              return null;
+            },
           ),
-        ],
+        ),
       ],
     );
   }

@@ -361,14 +361,12 @@ void main() {
     expect(store.cashBankTransfers.length, 1);
     expect(tester.takeException(), isNull);
 
-    // 10. Test Auto / Manual (dd-mm-yyyy with auto-dash) Date Option in New Fuel Sale!
+    // 10. Test Clean Unified Auto/Manual (dd-mm-yyyy with auto-dash) Date Option in New Fuel Sale!
     store.setModule(ErpModule.sales);
     await tester.pumpAndSettle();
     await tester.tap(find.text('New Fuel Sale'));
     await tester.pumpAndSettle();
-    expect(find.text('Manual (dd-mm-yyyy)'), findsOneWidget);
-    await tester.tap(find.text('Manual (dd-mm-yyyy)'));
-    await tester.pumpAndSettle();
+    expect(find.text('Auto'), findsOneWidget);
     final dateInput = find.byWidgetPredicate(
       (w) =>
           w is TextField &&
