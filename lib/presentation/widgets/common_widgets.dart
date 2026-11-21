@@ -1136,7 +1136,10 @@ Future<void> showRecordDetailDialog(
                             borderRadius: BorderRadius.circular(999)),
                       ),
                       onPressed: () async {
-                        final bytes = ErpPdfGenerator.buildTableReportPdf(
+                        await openPdfReportViewer(
+                          context,
+                          isUrdu: isUrdu,
+                          filename: 'bolan_voucher_${recordId.toLowerCase()}.pdf',
                           reportTitle: '$title ($recordId)',
                           subtitle:
                               'Record ID: $recordId  |  Date: ${formatDateShort(date)}',
@@ -1148,21 +1151,10 @@ Future<void> showRecordDetailDialog(
                               .map((f) => [f.label, f.value])
                               .toList(),
                         );
-                        await downloadBinaryFile(
-                          filename: 'bolan_voucher_${recordId.toLowerCase()}.pdf',
-                          bytes: bytes,
-                          mimeType: 'application/pdf',
-                        );
-                        if (!ctx.mounted) return;
-                        showErpSnackBar(
-                          context,
-                          tr(isUrdu, 'Voucher PDF downloaded!',
-                              'رسید پی ڈی ایف ڈاؤن لوڈ ہو گئی!'),
-                        );
                       },
                       icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
                       label: Text(
-                        tr(isUrdu, 'Download PDF', 'پی ڈی ایف رسید'),
+                        tr(isUrdu, 'Open / Print PDF', 'پی ڈی ایف کھولیں / پرنٹ'),
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -2179,4 +2171,478 @@ class _ErpDateEntryFieldState extends State<ErpDateEntryField> {
       ],
     );
   }
+}
+
+/// Full-Screen In-App PDF Statement Viewer with Download, Native Share (WhatsApp/Apps), & Print!
+Future<void> openPdfReportViewer(
+  BuildContext context, {
+  required bool isUrdu,
+  required String filename,
+  required String reportTitle,
+  required String subtitle,
+  required List<String> summaryItems,
+  required List<String> headers,
+  required List<List<String>> rows,
+}) async {
+  final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    reportTitle: reportTitle,
+    subtitle: subtitle,
+    summaryItems: summaryItems,
+    headers: headers,
+    rows: rows,
+  );
+
+  await showDialog<void>(
+    context: context,
+    useSafeArea: false,
+    builder: (ctx) {
+      final isMobile = MediaQuery.sizeOf(ctx).width < 640;
+      const crimson = Color(0xFFE11D48);
+      const crimsonDark = Color(0xFF9F1239);
+
+      return Directionality(
+        textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
+        child: Dialog.fullscreen(
+          backgroundColor: const Color(0xFF1E293B),
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 1. Top Action Bar (Open PDF inside App + Download + Share + Print + Close)
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 10 : 20,
+                    vertical: isMobile ? 10 : 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [crimson, crimsonDark],
+                    ),
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.picture_as_pdf_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tr(isUrdu, 'PDF Report Viewer',
+                                      'پی ڈی ایف رپورٹ ویور'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 14 : 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                LtrText(
+                                  '$filename  •  ${rows.length} Records',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withValues(alpha: 0.88),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: crimsonDark,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999)),
+                            ),
+                            onPressed: () async {
+                              final ok = await downloadBinaryFile(
+                                filename: filename,
+                                bytes: pdfBytes,
+                                mimeType: 'application/pdf',
+                              );
+                              if (!ctx.mounted) return;
+                              final savedAt = lastSavedFilePath;
+                              showErpSnackBar(
+                                ctx,
+                                ok
+                                    ? (savedAt != null
+                                        ? tr(
+                                            isUrdu,
+                                            'Saved PDF: $savedAt',
+                                            'پی ڈی ایف محفوظ ہو گئی: $savedAt',
+                                          )
+                                        : tr(
+                                            isUrdu,
+                                            'PDF downloaded ($filename)!',
+                                            'پی ڈی ایف ڈاؤن لوڈ ہو گئی ($filename)!',
+                                          ))
+                                    : tr(
+                                        isUrdu,
+                                        'Could not save PDF file.',
+                                        'پی ڈی ایف محفوظ نہ ہو سکی۔',
+                                      ),
+                              );
+                            },
+                            icon: const Icon(Icons.download_rounded, size: 16),
+                            label: Text(
+                              tr(isUrdu, 'Download', 'ڈاؤن لوڈ'),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          FilledButton.tonalIcon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.2),
+                              foregroundColor: Colors.white,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999)),
+                            ),
+                            onPressed: () async {
+                              final ok = await sharePdfFile(
+                                filename: filename,
+                                bytes: pdfBytes,
+                              );
+                              if (!ctx.mounted) return;
+                              if (!ok) {
+                                showErpSnackBar(
+                                  ctx,
+                                  tr(isUrdu, 'Could not open Share sheet.',
+                                      'شیئر آپشن نہیں کھل سکا۔'),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.share_rounded, size: 16),
+                            label: Text(
+                              tr(isUrdu, 'Share', 'شیئر'),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          FilledButton.tonalIcon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.2),
+                              foregroundColor: Colors.white,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999)),
+                            ),
+                            onPressed: () async {
+                              final ok = await printPdfFile(
+                                filename: filename,
+                                bytes: pdfBytes,
+                              );
+                              if (!ctx.mounted) return;
+                              if (!ok) {
+                                showErpSnackBar(
+                                  ctx,
+                                  tr(isUrdu, 'Could not open Print dialog.',
+                                      'پرنٹ آپشن نہیں کھل سکا۔'),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.print_rounded, size: 16),
+                            label: Text(
+                              tr(isUrdu, 'Print', 'پرنٹ'),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            tooltip: tr(isUrdu, 'Close', 'بند کریں'),
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            icon: const Icon(Icons.close_rounded,
+                                color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 2. Authentic A4 Paper Statement View Inside App
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(isMobile ? 10 : 24),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 920),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 24,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Branded Crimson Header
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 16),
+                                  color: crimson,
+                                  child: Row(
+                                    children: [
+                                      const BolanLogoBadge(
+                                          size: 40, isCircle: true),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'BOLAN GASOLINE - PETROL & DIESEL STATION',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                                letterSpacing: 0.4,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              reportTitle,
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.92),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                Padding(
+                                  padding: EdgeInsets.all(isMobile ? 14 : 20),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Text(
+                                        subtitle,
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF475569),
+                                        ),
+                                      ),
+                                      if (summaryItems.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF8FAFC),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            border: Border.all(
+                                                color:
+                                                    const Color(0xFFE2E8F0)),
+                                          ),
+                                          child: Wrap(
+                                            spacing: 18,
+                                            runSpacing: 8,
+                                            children: summaryItems.map((item) {
+                                              final lower = item.toLowerCase();
+                                              final isBal =
+                                                  lower.contains('balance') ||
+                                                      lower.contains('payable') ||
+                                                      lower.contains('due');
+                                              return Text(
+                                                item,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: isBal
+                                                      ? crimsonDark
+                                                      : const Color(0xFF0F172A),
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 14),
+                                      SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                              minWidth: 680),
+                                          child: Table(
+                                            defaultColumnWidth:
+                                                const IntrinsicColumnWidth(
+                                                    flex: 1),
+                                            border: TableBorder.all(
+                                              color: const Color(0xFFE2E8F0),
+                                              width: 1,
+                                            ),
+                                            children: [
+                                              TableRow(
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFF0F172A),
+                                                ),
+                                                children: [
+                                                  for (final h in headers)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets
+                                                              .symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 9),
+                                                      child: Text(
+                                                        h.toUpperCase(),
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              if (rows.isEmpty)
+                                                TableRow(
+                                                  children: [
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              12),
+                                                      child: Text(
+                                                        'No records found for this filter.',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color:
+                                                              Color(0xFF64748B),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    for (int i = 1;
+                                                        i < headers.length;
+                                                        i++)
+                                                      const SizedBox.shrink(),
+                                                  ],
+                                                )
+                                              else
+                                                for (int r = 0;
+                                                    r < rows.length;
+                                                    r++)
+                                                  TableRow(
+                                                    decoration: BoxDecoration(
+                                                      color: r.isOdd
+                                                          ? const Color(
+                                                              0xFFF8FAFC)
+                                                          : Colors.white,
+                                                    ),
+                                                    children: [
+                                                      for (int c = 0;
+                                                          c < headers.length;
+                                                          c++)
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal:
+                                                                      10,
+                                                                  vertical: 8),
+                                                          child: Text(
+                                                            c < rows[r].length
+                                                                ? rows[r][c]
+                                                                : '-',
+                                                            style: TextStyle(
+                                                              fontSize: 11.5,
+                                                              fontWeight: c == 0
+                                                                  ? FontWeight
+                                                                      .w800
+                                                                  : FontWeight
+                                                                      .w600,
+                                                              color: const Color(
+                                                                  0xFF0F172A),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 10),
+                                      const Text(
+                                        'Generated by Bolan Gasoline ERP System  |  Official Statement Report',
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }

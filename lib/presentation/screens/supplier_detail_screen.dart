@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/pdf_generator.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
 import '../widgets/common_widgets.dart';
@@ -141,7 +139,11 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
       ]);
     }
 
-    final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    final safeId = supplier.id.toLowerCase();
+    await openPdfReportViewer(
+      context,
+      isUrdu: isUrdu,
+      filename: 'bolan_supplier_${safeId}_$_periodFilter.pdf',
       reportTitle: 'SUPPLIER ACCOUNT & TANKER STATEMENT - ${supplier.nameEn}',
       subtitle:
           'Supplier ID: ${supplier.id}  |  Phone: ${supplier.phone}  |  Period: ${_periodFilter.toUpperCase()}',
@@ -161,18 +163,6 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
         'PAYABLE BAL',
       ],
       rows: pdfRows,
-    );
-    final safeId = supplier.id.toLowerCase();
-    await downloadBinaryFile(
-      filename: 'bolan_supplier_${safeId}_$_periodFilter.pdf',
-      bytes: pdfBytes,
-      mimeType: 'application/pdf',
-    );
-    if (!mounted) return;
-    showErpSnackBar(
-      context,
-      tr(isUrdu, 'Supplier PDF report downloaded (.pdf)!',
-          'سپلائر پی ڈی ایف رپورٹ ڈاؤن لوڈ ہو گئی (.pdf)!'),
     );
   }
 

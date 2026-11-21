@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/pdf_generator.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
 import '../widgets/common_widgets.dart';
@@ -75,7 +73,10 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
     final totalLiters = rows.fold<double>(0, (s, e) => s + e.liters);
     final totalCost = rows.fold<double>(0, (s, e) => s + e.totalCost);
     final totalPaid = rows.fold<double>(0, (s, e) => s + e.paid);
-    final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    await openPdfReportViewer(
+      context,
+      isUrdu: isUrdu,
+      filename: 'bolan_purchases_$_period.pdf',
       reportTitle: 'FUEL STOCK ARRIVALS & TANKER PURCHASES REPORT',
       subtitle:
           'Period: ${_period.toUpperCase()}  |  Records: ${rows.length}  |  Generated: ${formatDateShort(DateTime.now())}',
@@ -109,17 +110,6 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
           'Rs.${p.balance.round()}',
         ];
       }).toList(),
-    );
-    await downloadBinaryFile(
-      filename: 'bolan_purchases_$_period.pdf',
-      bytes: pdfBytes,
-      mimeType: 'application/pdf',
-    );
-    if (!mounted) return;
-    showErpSnackBar(
-      context,
-      tr(isUrdu, 'Purchases PDF report downloaded (.pdf)!',
-          'خریداری پی ڈی ایف رپورٹ ڈاؤن لوڈ ہو گئی (.pdf)!'),
     );
   }
 

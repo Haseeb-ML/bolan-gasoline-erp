@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/pdf_generator.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
 import '../widgets/common_widgets.dart';
@@ -67,7 +65,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Future<void> _downloadExpensesPdf(List<PumpExpense> rows) async {
     final isUrdu = widget.store.isUrdu;
     final totalAmt = rows.fold<double>(0, (s, e) => s + e.amount);
-    final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    await openPdfReportViewer(
+      context,
+      isUrdu: isUrdu,
+      filename: 'bolan_expenses_$_period.pdf',
       reportTitle: 'PUMP EXPENSES & STAFF SALARIES REPORT',
       subtitle:
           'Period: ${_period.toUpperCase()}  |  Records: ${rows.length}  |  Generated: ${formatDateShort(DateTime.now())}',
@@ -91,17 +92,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 'Rs. ${e.amount.round()}',
               ])
           .toList(),
-    );
-    await downloadBinaryFile(
-      filename: 'bolan_expenses_$_period.pdf',
-      bytes: pdfBytes,
-      mimeType: 'application/pdf',
-    );
-    if (!mounted) return;
-    showErpSnackBar(
-      context,
-      tr(isUrdu, 'Expenses PDF report downloaded (.pdf)!',
-          'اخراجات پی ڈی ایف رپورٹ ڈاؤن لوڈ ہو گئی (.pdf)!'),
     );
   }
 

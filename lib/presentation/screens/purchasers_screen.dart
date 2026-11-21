@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/pdf_generator.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
 import '../widgets/common_widgets.dart';
@@ -79,7 +77,10 @@ class _PurchasersScreenState extends State<PurchasersScreen> {
         'Rs.${sum.balance.round()}',
       ]);
     }
-    final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    await openPdfReportViewer(
+      context,
+      isUrdu: isUrdu,
+      filename: 'bolan_purchasers_khata.pdf',
       reportTitle: 'PURCHASERS KHATA & RECEIVABLE LEDGER SUMMARY',
       subtitle:
           'Total Credit Purchasers: ${rows.length}  |  Generated: ${formatDateShort(DateTime.now())}',
@@ -98,17 +99,6 @@ class _PurchasersScreenState extends State<PurchasersScreen> {
         'BALANCE DUE',
       ],
       rows: pdfRows,
-    );
-    await downloadBinaryFile(
-      filename: 'bolan_purchasers_khata.pdf',
-      bytes: pdfBytes,
-      mimeType: 'application/pdf',
-    );
-    if (!mounted) return;
-    showErpSnackBar(
-      context,
-      tr(isUrdu, 'Purchasers Khata PDF downloaded (.pdf)!',
-          'پرچیزرز کھاتہ پی ڈی ایف ڈاؤن لوڈ ہو گئی (.pdf)!'),
     );
   }
 

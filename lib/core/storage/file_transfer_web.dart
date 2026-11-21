@@ -99,3 +99,30 @@ Future<String?> pickJsonFileContent() async {
   }
   return completer.future;
 }
+
+Future<bool> sharePdfFile({
+  required String filename,
+  required Uint8List bytes,
+}) =>
+    downloadBinaryFile(filename: filename, bytes: bytes, mimeType: 'application/pdf');
+
+Future<bool> printPdfFile({
+  required String filename,
+  required Uint8List bytes,
+}) async {
+  try {
+    final blob = web.Blob(
+      [bytes.toJS].toJS,
+      web.BlobPropertyBag(type: 'application/pdf'),
+    );
+    final url = web.URL.createObjectURL(blob);
+    web.window.open(url, '_blank');
+    Future<void>.delayed(const Duration(seconds: 60), () {
+      web.URL.revokeObjectURL(url);
+    });
+    return true;
+  } catch (_) {
+    return downloadBinaryFile(
+        filename: filename, bytes: bytes, mimeType: 'application/pdf');
+  }
+}

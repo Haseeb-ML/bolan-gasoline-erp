@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/pdf_generator.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
 import '../widgets/common_widgets.dart';
@@ -74,7 +72,10 @@ class _CashBankScreenState extends State<CashBankScreen> {
         rows.where((e) => e.isInflow).fold<double>(0, (s, e) => s + e.amount);
     final totalOut =
         rows.where((e) => !e.isInflow).fold<double>(0, (s, e) => s + e.amount);
-    final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    await openPdfReportViewer(
+      context,
+      isUrdu: isUrdu,
+      filename: 'bolan_cash_bank_$_period.pdf',
       reportTitle: 'CASH & BANK ACCOUNT LEDGER REPORT',
       subtitle:
           'Account: ${_methodFilter == 'all' ? 'ALL (CASH + BANK)' : _methodFilter.toUpperCase()}  |  Period: ${_period.toUpperCase()}  |  Records: ${rows.length}',
@@ -104,17 +105,6 @@ class _CashBankScreenState extends State<CashBankScreen> {
                 'Rs.${e.amount.round()}',
               ])
           .toList(),
-    );
-    await downloadBinaryFile(
-      filename: 'bolan_cash_bank_$_period.pdf',
-      bytes: pdfBytes,
-      mimeType: 'application/pdf',
-    );
-    if (!mounted) return;
-    showErpSnackBar(
-      context,
-      tr(isUrdu, 'Cash & Bank PDF downloaded (.pdf)!',
-          'کیش اور بینک پی ڈی ایف ڈاؤن لوڈ ہو گئی (.pdf)!'),
     );
   }
 

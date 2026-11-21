@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/pdf_generator.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
 import '../widgets/common_widgets.dart';
@@ -74,7 +72,10 @@ class _SalesScreenState extends State<SalesScreen> {
     final totalLiters = rows.fold<double>(0, (s, e) => s + e.liters);
     final totalBill = rows.fold<double>(0, (s, e) => s + e.totalAmount);
     final totalPaid = rows.fold<double>(0, (s, e) => s + e.paidNow);
-    final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    await openPdfReportViewer(
+      context,
+      isUrdu: isUrdu,
+      filename: 'bolan_sales_$_period.pdf',
       reportTitle: 'FUEL SALES REGISTER REPORT',
       subtitle:
           'Period: ${_period.toUpperCase()}  |  Records: ${rows.length}  |  Generated: ${formatDateShort(DateTime.now())}',
@@ -108,17 +109,6 @@ class _SalesScreenState extends State<SalesScreen> {
           'Rs.${s.paidNow.round()}',
         ];
       }).toList(),
-    );
-    await downloadBinaryFile(
-      filename: 'bolan_sales_$_period.pdf',
-      bytes: pdfBytes,
-      mimeType: 'application/pdf',
-    );
-    if (!mounted) return;
-    showErpSnackBar(
-      context,
-      tr(isUrdu, 'Sales PDF report downloaded (.pdf)!',
-          'فروخت پی ڈی ایف رپورٹ ڈاؤن لوڈ ہو گئی (.pdf)!'),
     );
   }
 

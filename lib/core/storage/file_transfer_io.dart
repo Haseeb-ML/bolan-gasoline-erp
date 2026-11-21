@@ -1,6 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+
+import 'package:flutter/services.dart';
+
+const MethodChannel _nativeChannel =
+    MethodChannel('bolan_gasoline_erp/native_actions');
 
 String? lastSavedFilePath;
 
@@ -87,4 +91,40 @@ Future<bool> downloadBinaryFile({
 
 Future<String?> pickJsonFileContent() async {
   return null;
+}
+
+Future<bool> sharePdfFile({
+  required String filename,
+  required Uint8List bytes,
+}) async {
+  if (Platform.isAndroid) {
+    try {
+      final res = await _nativeChannel.invokeMethod<bool>('sharePdf', {
+        'filename': filename,
+        'bytes': bytes,
+      });
+      return res ?? true;
+    } catch (_) {
+      return false;
+    }
+  }
+  return downloadBinaryFile(filename: filename, bytes: bytes);
+}
+
+Future<bool> printPdfFile({
+  required String filename,
+  required Uint8List bytes,
+}) async {
+  if (Platform.isAndroid) {
+    try {
+      final res = await _nativeChannel.invokeMethod<bool>('printPdf', {
+        'filename': filename,
+        'bytes': bytes,
+      });
+      return res ?? true;
+    } catch (_) {
+      return false;
+    }
+  }
+  return downloadBinaryFile(filename: filename, bytes: bytes);
 }

@@ -21,3 +21,17 @@ Future<bool> downloadBinaryFile({
 Future<String?> pickJsonFileContent() async {
   return null;
 }
+
+Future<bool> sharePdfFile({
+  required String filename,
+  required Uint8List bytes,
+}) async {
+  return true;
+}
+
+Future<bool> printPdfFile({
+  required String filename,
+  required Uint8List bytes,
+}) async {
+  return true;
+}

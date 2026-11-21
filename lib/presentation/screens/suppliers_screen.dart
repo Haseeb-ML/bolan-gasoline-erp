@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/pdf_generator.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
 import '../widgets/common_widgets.dart';
@@ -77,7 +75,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         'Rs.${sum.balance.round()}',
       ]);
     }
-    final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    await openPdfReportViewer(
+      context,
+      isUrdu: isUrdu,
+      filename: 'bolan_suppliers_ledger.pdf',
       reportTitle: 'FUEL SUPPLIERS LEDGER & PAYABLE BALANCES',
       subtitle:
           'Total Suppliers: ${rows.length}  |  Generated: ${formatDateShort(DateTime.now())}',
@@ -95,17 +96,6 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         'PAYABLE DUE',
       ],
       rows: pdfRows,
-    );
-    await downloadBinaryFile(
-      filename: 'bolan_suppliers_ledger.pdf',
-      bytes: pdfBytes,
-      mimeType: 'application/pdf',
-    );
-    if (!mounted) return;
-    showErpSnackBar(
-      context,
-      tr(isUrdu, 'Suppliers PDF report downloaded (.pdf)!',
-          'سپلائرز پی ڈی ایف رپورٹ ڈاؤن لوڈ ہو گئی (.pdf)!'),
     );
   }
 

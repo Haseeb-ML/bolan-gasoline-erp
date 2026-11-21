@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/storage/file_transfer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/pdf_generator.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
 import '../widgets/common_widgets.dart';
@@ -161,7 +159,11 @@ class _PurchaserDetailScreenState extends State<PurchaserDetailScreen> {
       ]);
     }
 
-    final pdfBytes = ErpPdfGenerator.buildTableReportPdf(
+    final safeId = purchaser.id.toLowerCase();
+    await openPdfReportViewer(
+      context,
+      isUrdu: isUrdu,
+      filename: 'bolan_khata_${safeId}_$_periodFilter.pdf',
       reportTitle: 'PURCHASER PERSONAL KHATA STATEMENT - ${purchaser.nameEn}',
       subtitle:
           'Account ID: ${purchaser.id}  |  Phone: ${purchaser.phone}  |  Period: ${_periodLabel(false)}',
@@ -181,18 +183,6 @@ class _PurchaserDetailScreenState extends State<PurchaserDetailScreen> {
         'BALANCE',
       ],
       rows: pdfRows,
-    );
-    final safeId = purchaser.id.toLowerCase();
-    await downloadBinaryFile(
-      filename: 'bolan_khata_${safeId}_$_periodFilter.pdf',
-      bytes: pdfBytes,
-      mimeType: 'application/pdf',
-    );
-    if (!mounted) return;
-    showErpSnackBar(
-      context,
-      tr(isUrdu, 'Khata PDF report downloaded (.pdf)!',
-          'کھاتہ پی ڈی ایف رپورٹ ڈاؤن لوڈ ہو گئی (.pdf)!'),
     );
   }
 

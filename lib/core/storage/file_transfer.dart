@@ -29,3 +29,15 @@ Future<bool> downloadBinaryFile({
     );
 
 Future<String?> pickJsonFileContent() => impl.pickJsonFileContent();
+
+Future<bool> sharePdfFile({
+  required String filename,
+  required Uint8List bytes,
+}) =>
+    impl.sharePdfFile(filename: filename, bytes: bytes);
+
+Future<bool> printPdfFile({
+  required String filename,
+  required Uint8List bytes,
+}) =>
+    impl.printPdfFile(filename: filename, bytes: bytes);
