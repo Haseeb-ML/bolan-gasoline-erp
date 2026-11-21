@@ -1,7 +1,10 @@
 import 'dart:typed_data';
 
 import 'file_transfer_stub.dart'
-    if (dart.library.js_interop) 'file_transfer_web.dart' as impl;
+    if (dart.library.js_interop) 'file_transfer_web.dart'
+    if (dart.library.io) 'file_transfer_io.dart' as impl;
+
+String? get lastSavedFilePath => impl.lastSavedFilePath;
 
 Future<bool> downloadTextFile({
   required String filename,

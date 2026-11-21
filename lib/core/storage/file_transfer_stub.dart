@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+String? lastSavedFilePath;
+
 Future<bool> downloadTextFile({
   required String filename,
   required String content,
