@@ -17,6 +17,7 @@ enum ErpModule {
   purchasers,
   suppliers,
   expenses,
+  cashBank,
   settings,
 }
 
@@ -73,6 +74,8 @@ class ErpStore extends ChangeNotifier {
         return p.suppliers;
       case ErpModule.expenses:
         return p.expenses;
+      case ErpModule.cashBank:
+        return p.cashBank;
       case ErpModule.settings:
         return const ModuleCrudPermission.none();
     }
@@ -99,6 +102,8 @@ class ErpStore extends ChangeNotifier {
         return p.manageSuppliers;
       case ErpModule.expenses:
         return p.manageExpenses;
+      case ErpModule.cashBank:
+        return p.manageCashBank;
       case ErpModule.settings:
         return false; // Strictly Owner only
     }
@@ -128,6 +133,7 @@ class ErpStore extends ChangeNotifier {
   late List<FuelPurchase> purchases;
   late List<LedgerPayment> payments;
   late List<PumpExpense> expenses;
+  late List<CashBankTransfer> cashBankTransfers;
   late List<Map<String, String>> expenseCategories;
 
   static const List<Map<String, String>> defaultExpenseCategories = [
@@ -142,6 +148,7 @@ class ErpStore extends ChangeNotifier {
   int _supplierSeq = 3;
   int _paymentSeq = 204;
   int _expenseSeq = 104;
+  int _transferSeq = 101;
 
   void _loadSeed() {
     users = [
@@ -171,6 +178,7 @@ class ErpStore extends ChangeNotifier {
     purchases = List.of(ErpSeedData.purchases());
     payments = List.of(ErpSeedData.payments());
     expenses = List.of(ErpSeedData.expenses());
+    cashBankTransfers = [];
     expenseCategories =
         defaultExpenseCategories.map((e) => Map<String, String>.from(e)).toList();
   }
@@ -233,6 +241,14 @@ class ErpStore extends ChangeNotifier {
           .map((e) => PumpExpense.fromJson(e as Map<String, dynamic>))
           .toList();
     }
+    if (map['cashBankTransfers'] is List) {
+      cashBankTransfers = (map['cashBankTransfers'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map(CashBankTransfer.fromJson)
+          .toList();
+    } else {
+      cashBankTransfers = [];
+    }
     if (map['expenseCategories'] is List) {
       final loadedCats = (map['expenseCategories'] as List)
           .whereType<Map<String, dynamic>>()
@@ -263,6 +279,7 @@ class ErpStore extends ChangeNotifier {
     _supplierSeq = map['supplierSeq'] as int? ?? _supplierSeq;
     _paymentSeq = map['paymentSeq'] as int? ?? _paymentSeq;
     _expenseSeq = map['expenseSeq'] as int? ?? _expenseSeq;
+    _transferSeq = map['transferSeq'] as int? ?? _transferSeq;
   }
 
   String _encodePayload() {
@@ -279,6 +296,7 @@ class ErpStore extends ChangeNotifier {
       'purchases': purchases.map((e) => e.toJson()).toList(),
       'payments': payments.map((e) => e.toJson()).toList(),
       'expenses': expenses.map((e) => e.toJson()).toList(),
+      'cashBankTransfers': cashBankTransfers.map((e) => e.toJson()).toList(),
       'expenseCategories': expenseCategories,
       'users': users.map((u) => u.toJson()).toList(),
       'userSeq': _userSeq,
@@ -288,6 +306,7 @@ class ErpStore extends ChangeNotifier {
       'supplierSeq': _supplierSeq,
       'paymentSeq': _paymentSeq,
       'expenseSeq': _expenseSeq,
+      'transferSeq': _transferSeq,
     });
   }
 
@@ -786,6 +805,199 @@ class ErpStore extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
+  // CASH & BANK LEDGER COMPUTATION + TRANSFERS
+  // ---------------------------------------------------------------------------
+  static String normalizeMethod(String raw) {
+    final lower = raw.trim().toLowerCase();
+    return (lower.contains('bank') || lower.contains('online'))
+        ? 'Bank Transfer'
+        : 'Cash';
+  }
+
+  List<CashBankEntry> get cashBankEntries {
+    final entries = <CashBankEntry>[];
+
+    for (final s in sales) {
+      if (s.paidNow <= 0) continue;
+      final p = findPurchaser(s.purchaserId);
+      final isWalkIn = p?.isCashCounter ?? (s.purchaserId == 'CASH');
+      final partyEn = p?.nameEn ?? s.purchaserId;
+      final partyUr = p?.nameUr ?? s.purchaserId;
+      final method = normalizeMethod(s.paymentMethod);
+      entries.add(
+        CashBankEntry(
+          id: s.id,
+          date: s.date,
+          isInflow: true,
+          method: method,
+          sourceEn: isWalkIn ? 'Walk-in Fuel Sale' : 'Fuel Sale (Paid Now)',
+          sourceUr: isWalkIn ? 'واک ان تیل فروخت' : 'تیل فروخت (نقد وصولی)',
+          detailEn: '$partyEn • ${s.liters.round()} L ${s.fuel.key}',
+          detailUr: '$partyUr • ${s.liters.round()} لیٹر ${s.fuel.label(true)}',
+          amount: s.paidNow,
+          note: s.note,
+        ),
+      );
+    }
+
+    for (final pay in payments) {
+      if (pay.amount <= 0) continue;
+      final isIn = pay.partyType == 'purchaser';
+      final partyEn = isIn
+          ? (findPurchaser(pay.partyId)?.nameEn ?? pay.partyId)
+          : (findSupplier(pay.partyId)?.nameEn ?? pay.partyId);
+      final partyUr = isIn
+          ? (findPurchaser(pay.partyId)?.nameUr ?? pay.partyId)
+          : (findSupplier(pay.partyId)?.nameUr ?? pay.partyId);
+      final method = normalizeMethod(pay.method);
+      entries.add(
+        CashBankEntry(
+          id: pay.id,
+          date: pay.date,
+          isInflow: isIn,
+          method: method,
+          sourceEn: isIn ? 'Khata Recovery' : 'Supplier Payment',
+          sourceUr: isIn ? 'کھاتہ وصولی' : 'سپلائر ادائیگی',
+          detailEn: partyEn,
+          detailUr: partyUr,
+          amount: pay.amount,
+          note: pay.note,
+        ),
+      );
+    }
+
+    for (final pur in purchases) {
+      if (pur.paid <= 0) continue;
+      final sup = findSupplier(pur.supplierId);
+      final method = normalizeMethod(pur.paymentMethod);
+      entries.add(
+        CashBankEntry(
+          id: pur.id,
+          date: pur.date,
+          isInflow: false,
+          method: method,
+          sourceEn: 'Tanker Purchase (Paid)',
+          sourceUr: 'ٹینکر خریداری (ادائیگی)',
+          detailEn:
+              '${sup?.nameEn ?? pur.supplierId} • ${pur.liters.round()} L ${pur.fuel.key}',
+          detailUr:
+              '${sup?.nameUr ?? pur.supplierId} • ${pur.liters.round()} لیٹر ${pur.fuel.label(true)}',
+          amount: pur.paid,
+          note: pur.note,
+        ),
+      );
+    }
+
+    for (final exp in expenses) {
+      if (exp.amount <= 0) continue;
+      final method = normalizeMethod(exp.paymentMethod);
+      entries.add(
+        CashBankEntry(
+          id: exp.id,
+          date: exp.date,
+          isInflow: false,
+          method: method,
+          sourceEn: exp.categoryEn,
+          sourceUr: exp.categoryUr,
+          detailEn: exp.titleEn,
+          detailUr: exp.titleUr,
+          amount: exp.amount,
+        ),
+      );
+    }
+
+    for (final trf in cashBankTransfers) {
+      if (trf.amount <= 0) continue;
+      final from = normalizeMethod(trf.fromAccount);
+      final to = normalizeMethod(trf.toAccount);
+      entries.add(
+        CashBankEntry(
+          id: '${trf.id}-OUT',
+          date: trf.date,
+          isInflow: false,
+          method: from,
+          sourceEn: 'Transfer to $to',
+          sourceUr: '$to میں ٹرانسفر',
+          detailEn: trf.note.isEmpty ? '$from -> $to' : trf.note,
+          detailUr: trf.note.isEmpty ? '$from -> $to' : trf.note,
+          amount: trf.amount,
+          note: trf.note,
+        ),
+      );
+      entries.add(
+        CashBankEntry(
+          id: '${trf.id}-IN',
+          date: trf.date,
+          isInflow: true,
+          method: to,
+          sourceEn: 'Received from $from',
+          sourceUr: '$from سے وصولی',
+          detailEn: trf.note.isEmpty ? '$from -> $to' : trf.note,
+          detailUr: trf.note.isEmpty ? '$from -> $to' : trf.note,
+          amount: trf.amount,
+          note: trf.note,
+        ),
+      );
+    }
+
+    entries.sort((a, b) => b.date.compareTo(a.date));
+    return entries;
+  }
+
+  double get totalCashInHand {
+    double net = 0;
+    for (final e in cashBankEntries) {
+      if (e.method == 'Cash') {
+        net += e.isInflow ? e.amount : -e.amount;
+      }
+    }
+    return net;
+  }
+
+  double get totalBankBalance {
+    double net = 0;
+    for (final e in cashBankEntries) {
+      if (e.method == 'Bank Transfer') {
+        net += e.isInflow ? e.amount : -e.amount;
+      }
+    }
+    return net;
+  }
+
+  double get totalLiquidFunds => totalCashInHand + totalBankBalance;
+
+  void addCashBankTransfer({
+    required String fromAccount,
+    required String toAccount,
+    required double amount,
+    String note = '',
+    DateTime? date,
+  }) {
+    cashBankTransfers.insert(
+      0,
+      CashBankTransfer(
+        id: 'TRF-${_transferSeq++}',
+        date: date ?? DateTime.now(),
+        fromAccount: normalizeMethod(fromAccount),
+        toAccount: normalizeMethod(toAccount),
+        amount: amount,
+        note: note.trim(),
+      ),
+    );
+    notifyListeners();
+    _persist();
+  }
+
+  void deleteCashBankTransfers(Iterable<String> ids) {
+    final cleanIds = ids
+        .map((id) => id.replaceAll('-IN', '').replaceAll('-OUT', ''))
+        .toSet();
+    cashBankTransfers.removeWhere((t) => cleanIds.contains(t.id));
+    notifyListeners();
+    _persist();
+  }
+
+  // ---------------------------------------------------------------------------
   // CRUD: Fuel Sales
   // ---------------------------------------------------------------------------
   void addFuelSale({
@@ -794,6 +1006,7 @@ class ErpStore extends ChangeNotifier {
     required double liters,
     required double rateUsed,
     required double paidNow,
+    String paymentMethod = 'Cash',
     String note = '',
     DateTime? date,
   }) {
@@ -805,6 +1018,7 @@ class ErpStore extends ChangeNotifier {
       liters: liters,
       rateUsed: rateUsed,
       paidNow: paidNow,
+      paymentMethod: normalizeMethod(paymentMethod),
       syncStatus: isOfflineMode ? 'Offline Queued' : 'Synced',
       note: note,
     );
@@ -871,6 +1085,7 @@ class ErpStore extends ChangeNotifier {
     required double liters,
     required double rate,
     required double paid,
+    String paymentMethod = 'Cash',
     String note = '',
     DateTime? date,
   }) {
@@ -882,6 +1097,7 @@ class ErpStore extends ChangeNotifier {
       liters: liters,
       rate: rate,
       paid: paid,
+      paymentMethod: normalizeMethod(paymentMethod),
       note: note,
     );
     purchases.insert(0, purchase);
@@ -1080,6 +1296,7 @@ class ErpStore extends ChangeNotifier {
     required String titleEn,
     required String titleUr,
     required double amount,
+    String paymentMethod = 'Cash',
     DateTime? date,
   }) {
     expenses.insert(
@@ -1092,6 +1309,7 @@ class ErpStore extends ChangeNotifier {
         titleEn: titleEn.trim(),
         titleUr: titleUr.trim().isEmpty ? titleEn.trim() : titleUr.trim(),
         amount: amount,
+        paymentMethod: normalizeMethod(paymentMethod),
       ),
     );
     notifyListeners();
@@ -1261,12 +1479,14 @@ class ErpStore extends ChangeNotifier {
     purchases = [];
     payments = [];
     expenses = [];
+    cashBankTransfers = [];
     _saleSeq = 101;
     _purchaseSeq = 101;
     _purchaserSeq = 1;
     _supplierSeq = 1;
     _paymentSeq = 101;
     _expenseSeq = 101;
+    _transferSeq = 101;
     notifyListeners();
     _persist();
   }
@@ -1279,12 +1499,14 @@ class ErpStore extends ChangeNotifier {
     purchases = List.of(ErpSeedData.purchases());
     payments = List.of(ErpSeedData.payments());
     expenses = List.of(ErpSeedData.expenses());
+    cashBankTransfers = [];
     _saleSeq = 808;
     _purchaseSeq = 403;
     _purchaserSeq = 11;
     _supplierSeq = 3;
     _paymentSeq = 204;
     _expenseSeq = 104;
+    _transferSeq = 101;
     notifyListeners();
     _persist();
   }

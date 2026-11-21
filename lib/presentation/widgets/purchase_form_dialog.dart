@@ -32,6 +32,8 @@ Future<void> showPurchaseFormDialog(
   }
 
   FuelType selectedFuel = existing?.fuel ?? FuelType.petrol;
+  String selectedMethod =
+      ErpStore.normalizeMethod(existing?.paymentMethod ?? 'Cash');
   final litersCtrl = TextEditingController(
       text: (existing?.liters ?? 5000).toStringAsFixed(0));
   final rateCtrl = TextEditingController(
@@ -274,6 +276,45 @@ Future<void> showPurchaseFormDialog(
                     ),
                     const SizedBox(height: 14),
                     Text(
+                      tr(isUrdu, 'Payment Method (Cash / Bank Account)',
+                          'ادائیگی کا طریقہ (کیش / بینک)'),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: erp.textMain),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          avatar: Icon(Icons.payments_rounded,
+                              size: 16,
+                              color: selectedMethod == 'Cash'
+                                  ? erp.success
+                                  : erp.textMuted),
+                          label: Text(tr(isUrdu, 'Cash', 'نقد کیش')),
+                          selected: selectedMethod == 'Cash',
+                          onSelected: (_) =>
+                              setState(() => selectedMethod = 'Cash'),
+                        ),
+                        ChoiceChip(
+                          avatar: Icon(Icons.account_balance_rounded,
+                              size: 16,
+                              color: selectedMethod == 'Bank Transfer'
+                                  ? erp.primary
+                                  : erp.textMuted),
+                          label: Text(
+                              tr(isUrdu, 'Bank Transfer', 'بینک ٹرانسفر')),
+                          selected: selectedMethod == 'Bank Transfer',
+                          onSelected: (_) =>
+                              setState(() => selectedMethod = 'Bank Transfer'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
                       tr(isUrdu, 'Tanker / Slip Note', 'ٹینکر / پرچی نوٹ'),
                       style: TextStyle(
                           fontSize: 12,
@@ -348,6 +389,7 @@ Future<void> showPurchaseFormDialog(
                                   liters: l,
                                   rate: r,
                                   paid: p,
+                                  paymentMethod: selectedMethod,
                                   note: noteCtrl.text.trim(),
                                 ),
                               );
@@ -358,6 +400,7 @@ Future<void> showPurchaseFormDialog(
                                 liters: l,
                                 rate: r,
                                 paid: p,
+                                paymentMethod: selectedMethod,
                                 note: noteCtrl.text.trim(),
                               );
                             }

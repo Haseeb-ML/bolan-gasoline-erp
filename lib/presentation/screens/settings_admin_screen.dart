@@ -514,6 +514,13 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
                                     onChanged: (np) => setDlgState(() =>
                                         perms = perms.copyWith(expenses: np)),
                                   ),
+                                  _buildMatrixRow(
+                                    label: tr(isUrdu, 'Cash & Bank Ledger',
+                                        'کیش اور بینک کھاتہ'),
+                                    perm: perms.cashBank,
+                                    onChanged: (np) => setDlgState(() =>
+                                        perms = perms.copyWith(cashBank: np)),
+                                  ),
                                 ],
                               ),
                             ),

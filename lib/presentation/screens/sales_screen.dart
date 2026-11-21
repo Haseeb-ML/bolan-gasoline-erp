@@ -388,9 +388,30 @@ class _SalesScreenState extends State<SalesScreen> {
                 DataCell(LtrText(formatRs(s.totalAmount),
                     style: TextStyle(
                         fontWeight: FontWeight.w800, color: erp.textMain))),
-                DataCell(LtrText(formatRs(s.paidNow),
-                    style: TextStyle(
-                        fontWeight: FontWeight.w700, color: erp.success))),
+                DataCell(
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LtrText(formatRs(s.paidNow),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: erp.success)),
+                      Text(
+                        s.paymentMethod == 'Bank Transfer'
+                            ? tr(isUrdu, 'Bank Transfer', 'بینک')
+                            : tr(isUrdu, 'Cash', 'کیش'),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: s.paymentMethod == 'Bank Transfer'
+                              ? erp.dieselColor
+                              : erp.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 DataCell(
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -444,10 +465,15 @@ class _SalesScreenState extends State<SalesScreen> {
                               isBold: true,
                             ),
                             RecordDetailField(
-                              label: tr(isUrdu, 'Cash Paid Now', 'وصول شدہ رقم'),
+                              label: tr(isUrdu, 'Paid Now', 'وصول شدہ رقم'),
                               value: formatRs(s.paidNow),
                               valueColor: erp.success,
                               isBold: true,
+                            ),
+                            RecordDetailField(
+                              label: tr(isUrdu, 'Payment Method',
+                                  'ادائیگی کا طریقہ'),
+                              value: s.paymentMethod,
                             ),
                             RecordDetailField(
                               label: tr(isUrdu, 'Remaining Balance Due',

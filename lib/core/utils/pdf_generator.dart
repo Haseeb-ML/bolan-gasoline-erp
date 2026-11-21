@@ -12,7 +12,7 @@ class ErpPdfGenerator {
     required List<String> headers,
     required List<List<String>> rows,
   }) {
-    const int rowsPerPage = 28;
+    const int rowsPerPage = 26;
     final pageChunks = <List<List<String>>>[];
     if (rows.isEmpty) {
       pageChunks.add(const []);
@@ -117,15 +117,35 @@ class ErpPdfGenerator {
     s.writeln('0.2 0.25 0.33 rg');
     s.writeln(_textCmd(32, 754, 'F1', 9, _cleanAscii(subtitle)));
 
-    // Summary Strip
+    // Summary Strip (2-column grid so Balance Due is never truncated!)
     double y = 734;
     if (summaryItems.isNotEmpty) {
+      final cleanItems = summaryItems.map(_cleanAscii).toList();
+      final rowCount = (cleanItems.length / 2).ceil();
+      final boxHeight = rowCount > 1 ? 40.0 : 24.0;
+      final boxBottom = 742.0 - boxHeight;
       s.writeln('0.96 0.97 0.98 rg');
-      s.writeln('32 718 531 24 re f');
-      s.writeln('0.08 0.09 0.12 rg');
-      final summaryLine = summaryItems.map(_cleanAscii).join('    |    ');
-      s.writeln(_textCmd(40, 727, 'F2', 8.5, _truncate(summaryLine, 95)));
-      y = 696;
+      s.writeln('32 ${boxBottom.toStringAsFixed(1)} 531 ${boxHeight.toStringAsFixed(1)} re f');
+      s.writeln('0.88 0.90 0.94 RG 0.6 w');
+      s.writeln('32 ${boxBottom.toStringAsFixed(1)} 531 ${boxHeight.toStringAsFixed(1)} re S');
+
+      for (int i = 0; i < cleanItems.length; i++) {
+        final col = i % 2;
+        final row = i ~/ 2;
+        final itemX = col == 0 ? 42.0 : 306.0;
+        final itemY = 727.0 - (row * 16.0);
+        final itemText = cleanItems[i];
+        final isBalanceHighlight = itemText.toLowerCase().contains('balance') ||
+            itemText.toLowerCase().contains('payable') ||
+            itemText.toLowerCase().contains('due');
+        if (isBalanceHighlight) {
+          s.writeln('0.82 0.08 0.24 rg');
+        } else {
+          s.writeln('0.08 0.09 0.12 rg');
+        }
+        s.writeln(_textCmd(itemX, itemY, 'F2', 8.5, _truncate(itemText, 48)));
+      }
+      y = boxBottom - 22.0;
     }
 
     // Table Header Bar

@@ -105,11 +105,16 @@ void main() {
     expect(store.fuelStockValueRs(FuelType.diesel), greaterThan(0));
     expect(find.textContaining('Value: Rs.'), findsWidgets);
 
-    // 5c. Verify PDF Generator produces valid Adobe PDF 1.4 binary + test PDF & Excel (.csv) buttons across all 7 Record Screens!
+    // 5c. Verify PDF Generator produces valid Adobe PDF 1.4 binary with UNTRUNCATED Balance Due + test Download Report across all modules!
     final samplePdf = ErpPdfGenerator.buildTableReportPdf(
-      reportTitle: 'TEST FUEL REPORT',
+      reportTitle: 'PURCHASER PERSONAL KHATA STATEMENT',
       subtitle: 'Period: ALL',
-      summaryItems: const ['Total: Rs. 50,000'],
+      summaryItems: const [
+        'Total Liters: 1200 L',
+        'Total Billed: Rs. 319200',
+        'Total Paid: Rs. 200000',
+        'Balance Due: Rs. 225000',
+      ],
       headers: const ['ID', 'NAME', 'AMOUNT'],
       rows: const [
         ['S-1001', 'Arsalan', 'Rs. 50,000'],
@@ -119,15 +124,18 @@ void main() {
     final pdfText = String.fromCharCodes(samplePdf);
     expect(pdfHeader, '%PDF-1.4');
     expect(pdfText.contains('BOLAN GASOLINE'), isTrue);
+    expect(pdfText.contains('Total Paid: Rs. 200000'), isTrue);
+    expect(pdfText.contains('Balance Due: Rs. 225000'), isTrue);
     expect(pdfText.trimRight().endsWith('%%EOF'), isTrue);
 
-    // Test "Download Report" -> 2 options ("Download PDF (.pdf)" & "Download Excel (.csv)") on Sales, Purchases, Expenses, Purchasers, and Suppliers screens
+    // Test "Download Report" -> 2 options ("Download PDF (.pdf)" & "Download Excel (.csv)") on Sales, Purchases, Expenses, Purchasers, Suppliers & Cash/Bank screens
     for (final mod in [
       ErpModule.sales,
       ErpModule.purchases,
       ErpModule.expenses,
       ErpModule.purchasers,
       ErpModule.suppliers,
+      ErpModule.cashBank,
     ]) {
       store.setModule(mod);
       await tester.pumpAndSettle();
@@ -322,6 +330,35 @@ void main() {
 
     expect(store.expenses.length, 1);
     expect(store.expenses.first.categoryEn, 'Tea & Food');
+    expect(tester.takeException(), isNull);
+
+    // 9. Test Walk-in Customer Bank Transfer Sale + Cash & Bank Ledger Module + Cash <-> Bank Transfer!
+    final prevBank = store.totalBankBalance;
+    final prevCash = store.totalCashInHand;
+    store.addFuelSale(
+      purchaserId: 'CASH',
+      fuel: FuelType.diesel,
+      liters: 100,
+      rateUsed: 270,
+      paidNow: 27000,
+      paymentMethod: 'Bank Transfer',
+      note: 'Walk-in Bank Transfer Test',
+    );
+    expect(store.totalBankBalance, prevBank + 27000);
+    expect(store.totalCashInHand, prevCash);
+
+    store.setModule(ErpModule.cashBank);
+    await tester.pumpAndSettle();
+    expect(find.text('Cash in Hand Balance'), findsOneWidget);
+    expect(find.text('Bank Account Balance'), findsOneWidget);
+    expect(find.text('Walk-in Fuel Sale'), findsWidgets);
+
+    // Test Cash <-> Bank Transfer Dialog
+    await tester.tap(find.text('Cash <-> Bank'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save Transfer'));
+    await tester.pumpAndSettle();
+    expect(store.cashBankTransfers.length, 1);
     expect(tester.takeException(), isNull);
   });
 }

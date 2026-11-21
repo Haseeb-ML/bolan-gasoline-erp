@@ -392,6 +392,8 @@ Future<void> showExpenseFormDialog(
               'پمپ کے لڑکے کی تنخواہ / ایڈوانس'));
   final amountCtrl = TextEditingController(
       text: (existing?.amount ?? 15000).toStringAsFixed(0));
+  String selectedMethod =
+      ErpStore.normalizeMethod(existing?.paymentMethod ?? 'Cash');
   final formKey = GlobalKey<FormState>();
 
   await showDialog<void>(
@@ -576,6 +578,36 @@ Future<void> showExpenseFormDialog(
                             : null;
                       },
                     ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          avatar: Icon(Icons.payments_rounded,
+                              size: 16,
+                              color: selectedMethod == 'Cash'
+                                  ? erp.success
+                                  : erp.textMuted),
+                          label: Text(tr(isUrdu, 'Cash', 'نقد کیش')),
+                          selected: selectedMethod == 'Cash',
+                          onSelected: (_) =>
+                              setState(() => selectedMethod = 'Cash'),
+                        ),
+                        ChoiceChip(
+                          avatar: Icon(Icons.account_balance_rounded,
+                              size: 16,
+                              color: selectedMethod == 'Bank Transfer'
+                                  ? erp.primary
+                                  : erp.textMuted),
+                          label: Text(
+                              tr(isUrdu, 'Bank Transfer', 'بینک ٹرانسفر')),
+                          selected: selectedMethod == 'Bank Transfer',
+                          onSelected: (_) =>
+                              setState(() => selectedMethod = 'Bank Transfer'),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -611,6 +643,7 @@ Future<void> showExpenseFormDialog(
                                   titleEn: detail,
                                   titleUr: detail,
                                   amount: amt,
+                                  paymentMethod: selectedMethod,
                                 ),
                               );
                             } else {
@@ -620,6 +653,7 @@ Future<void> showExpenseFormDialog(
                                 titleEn: detail,
                                 titleUr: detail,
                                 amount: amt,
+                                paymentMethod: selectedMethod,
                               );
                             }
                             Navigator.of(ctx).pop();

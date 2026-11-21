@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/erp_models.dart';
 import '../../data/repository/erp_store.dart';
+import '../screens/cash_bank_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/expenses_screen.dart';
 import '../screens/purchasers_screen.dart';
@@ -71,6 +72,11 @@ class _ErpShellState extends State<ErpShell> {
         module: ErpModule.expenses,
         icon: Icons.receipt_long_rounded,
         label: tr(isUrdu, 'Expenses & Salaries', 'اخراجات اور تنخواہیں'),
+      ),
+      _NavItem(
+        module: ErpModule.cashBank,
+        icon: Icons.account_balance_rounded,
+        label: tr(isUrdu, 'Cash & Bank Ledger', 'کیش اور بینک کھاتہ'),
       ),
       _NavItem(
         module: ErpModule.settings,
@@ -142,6 +148,16 @@ class _ErpShellState extends State<ErpShell> {
             'پمپ کے لڑکوں کی تنخواہیں اور دیگر تمام اخراجات ایک جگہ',
           ),
         );
+      case ErpModule.cashBank:
+        return (
+          tr(isUrdu, 'Cash & Bank Account Ledger',
+              'کیش اور بینک اکاؤنٹ کھاتہ'),
+          tr(
+            isUrdu,
+            'Track Cash in Hand, Walk-in & Khata Bank Transfers, and Cash <-> Bank deposits',
+            'کیش، واک ان اور کھاتہ بینک ٹرانسفر اور کیش بینک ڈپازٹ کا مکمل حساب',
+          ),
+        );
       case ErpModule.settings:
         return (
           tr(isUrdu, 'Roles, Employees & Data Management',
@@ -169,6 +185,8 @@ class _ErpShellState extends State<ErpShell> {
         return SuppliersScreen(store: widget.store);
       case ErpModule.expenses:
         return ExpensesScreen(store: widget.store);
+      case ErpModule.cashBank:
+        return CashBankScreen(store: widget.store);
       case ErpModule.settings:
         return SettingsAdminScreen(store: widget.store);
     }

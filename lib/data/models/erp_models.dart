@@ -197,6 +197,7 @@ class FuelSale {
     required this.liters,
     required this.rateUsed,
     required this.paidNow,
+    this.paymentMethod = 'Cash',
     this.syncStatus = 'Synced',
     this.note = '',
   });
@@ -208,6 +209,7 @@ class FuelSale {
   final double liters;
   final double rateUsed;
   final double paidNow;
+  final String paymentMethod; // 'Cash' | 'Bank Transfer'
   final String syncStatus;
   final String note;
 
@@ -222,6 +224,7 @@ class FuelSale {
     double? liters,
     double? rateUsed,
     double? paidNow,
+    String? paymentMethod,
     String? syncStatus,
     String? note,
   }) {
@@ -233,6 +236,7 @@ class FuelSale {
       liters: liters ?? this.liters,
       rateUsed: rateUsed ?? this.rateUsed,
       paidNow: paidNow ?? this.paidNow,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
       syncStatus: syncStatus ?? this.syncStatus,
       note: note ?? this.note,
     );
@@ -246,6 +250,7 @@ class FuelSale {
         'liters': liters,
         'rateUsed': rateUsed,
         'paidNow': paidNow,
+        'paymentMethod': paymentMethod,
         'syncStatus': syncStatus,
         'note': note,
       };
@@ -258,6 +263,7 @@ class FuelSale {
         liters: (j['liters'] as num?)?.toDouble() ?? 0,
         rateUsed: (j['rateUsed'] as num?)?.toDouble() ?? 0,
         paidNow: (j['paidNow'] as num?)?.toDouble() ?? 0,
+        paymentMethod: j['paymentMethod'] as String? ?? 'Cash',
         syncStatus: j['syncStatus'] as String? ?? 'Synced',
         note: j['note'] as String? ?? '',
       );
@@ -272,6 +278,7 @@ class FuelPurchase {
     required this.liters,
     required this.rate,
     required this.paid,
+    this.paymentMethod = 'Cash',
     this.note = '',
   });
 
@@ -282,6 +289,7 @@ class FuelPurchase {
   final double liters;
   final double rate;
   final double paid;
+  final String paymentMethod; // 'Cash' | 'Bank Transfer'
   final String note;
 
   double get totalCost => (liters * rate).roundToDouble();
@@ -294,6 +302,7 @@ class FuelPurchase {
     double? liters,
     double? rate,
     double? paid,
+    String? paymentMethod,
     String? note,
   }) {
     return FuelPurchase(
@@ -304,6 +313,7 @@ class FuelPurchase {
       liters: liters ?? this.liters,
       rate: rate ?? this.rate,
       paid: paid ?? this.paid,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
       note: note ?? this.note,
     );
   }
@@ -316,6 +326,7 @@ class FuelPurchase {
         'liters': liters,
         'rate': rate,
         'paid': paid,
+        'paymentMethod': paymentMethod,
         'note': note,
       };
 
@@ -327,6 +338,7 @@ class FuelPurchase {
         liters: (j['liters'] as num?)?.toDouble() ?? 0,
         rate: (j['rate'] as num?)?.toDouble() ?? 0,
         paid: (j['paid'] as num?)?.toDouble() ?? 0,
+        paymentMethod: j['paymentMethod'] as String? ?? 'Cash',
         note: j['note'] as String? ?? '',
       );
 }
@@ -397,6 +409,7 @@ class PumpExpense {
     required this.titleEn,
     required this.titleUr,
     required this.amount,
+    this.paymentMethod = 'Cash',
   });
 
   final String id;
@@ -406,6 +419,7 @@ class PumpExpense {
   final String titleEn;
   final String titleUr;
   final double amount;
+  final String paymentMethod; // 'Cash' | 'Bank Transfer'
 
   String category(bool isUrdu) => isUrdu ? categoryUr : categoryEn;
   String title(bool isUrdu) => isUrdu ? titleUr : titleEn;
@@ -417,6 +431,7 @@ class PumpExpense {
     String? titleEn,
     String? titleUr,
     double? amount,
+    String? paymentMethod,
   }) {
     return PumpExpense(
       id: id,
@@ -426,6 +441,7 @@ class PumpExpense {
       titleEn: titleEn ?? this.titleEn,
       titleUr: titleUr ?? this.titleUr,
       amount: amount ?? this.amount,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
     );
   }
 
@@ -437,6 +453,7 @@ class PumpExpense {
         'titleEn': titleEn,
         'titleUr': titleUr,
         'amount': amount,
+        'paymentMethod': paymentMethod,
       };
 
   factory PumpExpense.fromJson(Map<String, dynamic> j) => PumpExpense(
@@ -447,7 +464,70 @@ class PumpExpense {
         titleEn: j['titleEn'] as String? ?? '',
         titleUr: j['titleUr'] as String? ?? j['titleEn'] as String? ?? '',
         amount: (j['amount'] as num?)?.toDouble() ?? 0,
+        paymentMethod: j['paymentMethod'] as String? ?? 'Cash',
       );
+}
+
+class CashBankTransfer {
+  const CashBankTransfer({
+    required this.id,
+    required this.date,
+    required this.fromAccount, // 'Cash' | 'Bank Transfer'
+    required this.toAccount, // 'Bank Transfer' | 'Cash'
+    required this.amount,
+    this.note = '',
+  });
+
+  final String id;
+  final DateTime date;
+  final String fromAccount;
+  final String toAccount;
+  final double amount;
+  final String note;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'date': date.toIso8601String(),
+        'fromAccount': fromAccount,
+        'toAccount': toAccount,
+        'amount': amount,
+        'note': note,
+      };
+
+  factory CashBankTransfer.fromJson(Map<String, dynamic> j) => CashBankTransfer(
+        id: j['id'] as String,
+        date: DateTime.tryParse(j['date'] as String? ?? '') ?? DateTime.now(),
+        fromAccount: j['fromAccount'] as String? ?? 'Cash',
+        toAccount: j['toAccount'] as String? ?? 'Bank Transfer',
+        amount: (j['amount'] as num?)?.toDouble() ?? 0,
+        note: j['note'] as String? ?? '',
+      );
+}
+
+class CashBankEntry {
+  const CashBankEntry({
+    required this.id,
+    required this.date,
+    required this.isInflow,
+    required this.method, // 'Cash' | 'Bank Transfer'
+    required this.sourceEn,
+    required this.sourceUr,
+    required this.detailEn,
+    required this.detailUr,
+    required this.amount,
+    this.note = '',
+  });
+
+  final String id;
+  final DateTime date;
+  final bool isInflow;
+  final String method;
+  final String sourceEn;
+  final String sourceUr;
+  final String detailEn;
+  final String detailUr;
+  final double amount;
+  final String note;
 }
 
 class PartyBalanceSummary {
@@ -599,6 +679,7 @@ class UserPermissions {
     this.purchasers = const ModuleCrudPermission(view: true, create: true),
     this.suppliers = const ModuleCrudPermission.none(),
     this.expenses = const ModuleCrudPermission.none(),
+    this.cashBank = const ModuleCrudPermission.none(),
   });
 
   factory UserPermissions.all() => const UserPermissions(
@@ -608,6 +689,7 @@ class UserPermissions {
         purchasers: ModuleCrudPermission.full(),
         suppliers: ModuleCrudPermission.full(),
         expenses: ModuleCrudPermission.full(),
+        cashBank: ModuleCrudPermission.full(),
       );
 
   factory UserPermissions.defaultEmployee() => const UserPermissions(
@@ -619,6 +701,7 @@ class UserPermissions {
             view: true, create: true, update: false, delete: false),
         suppliers: ModuleCrudPermission.none(),
         expenses: ModuleCrudPermission.none(),
+        cashBank: ModuleCrudPermission.none(),
       );
 
   factory UserPermissions.none() => const UserPermissions(
@@ -628,6 +711,7 @@ class UserPermissions {
         purchasers: ModuleCrudPermission.none(),
         suppliers: ModuleCrudPermission.none(),
         expenses: ModuleCrudPermission.none(),
+        cashBank: ModuleCrudPermission.none(),
       );
 
   final ModuleCrudPermission dashboard;
@@ -636,6 +720,7 @@ class UserPermissions {
   final ModuleCrudPermission purchasers;
   final ModuleCrudPermission suppliers;
   final ModuleCrudPermission expenses;
+  final ModuleCrudPermission cashBank;
 
   // Backward-compatible module view getters
   bool get viewDashboard => dashboard.view;
@@ -644,6 +729,7 @@ class UserPermissions {
   bool get managePurchasers => purchasers.view;
   bool get manageSuppliers => suppliers.view;
   bool get manageExpenses => expenses.view;
+  bool get manageCashBank => cashBank.view;
 
   // Any-module edit/delete summary getters
   bool get canEdit =>
@@ -652,14 +738,16 @@ class UserPermissions {
       purchases.update ||
       purchasers.update ||
       suppliers.update ||
-      expenses.update;
+      expenses.update ||
+      cashBank.update;
 
   bool get canDelete =>
       sales.delete ||
       purchases.delete ||
       purchasers.delete ||
       suppliers.delete ||
-      expenses.delete;
+      expenses.delete ||
+      cashBank.delete;
 
   UserPermissions copyWith({
     ModuleCrudPermission? dashboard,
@@ -668,6 +756,7 @@ class UserPermissions {
     ModuleCrudPermission? purchasers,
     ModuleCrudPermission? suppliers,
     ModuleCrudPermission? expenses,
+    ModuleCrudPermission? cashBank,
   }) {
     return UserPermissions(
       dashboard: dashboard ?? this.dashboard,
@@ -676,6 +765,7 @@ class UserPermissions {
       purchasers: purchasers ?? this.purchasers,
       suppliers: suppliers ?? this.suppliers,
       expenses: expenses ?? this.expenses,
+      cashBank: cashBank ?? this.cashBank,
     );
   }
 
@@ -686,6 +776,7 @@ class UserPermissions {
         'purchasers': purchasers.toJson(),
         'suppliers': suppliers.toJson(),
         'expenses': expenses.toJson(),
+        'cashBank': cashBank.toJson(),
         // Legacy keys for backward compatibility
         'viewDashboard': viewDashboard,
         'manageSales': manageSales,
@@ -693,6 +784,7 @@ class UserPermissions {
         'managePurchasers': managePurchasers,
         'manageSuppliers': manageSuppliers,
         'manageExpenses': manageExpenses,
+        'manageCashBank': manageCashBank,
         'canEdit': canEdit,
         'canDelete': canDelete,
       };
@@ -740,6 +832,13 @@ class UserPermissions {
         j['expenses'] as Map<String, dynamic>?,
         fallbackView: j['manageExpenses'] as bool? ?? false,
         fallbackCreate: j['manageExpenses'] as bool? ?? false,
+        fallbackUpdate: legacyEdit,
+        fallbackDelete: legacyDel,
+      ),
+      cashBank: ModuleCrudPermission.fromJson(
+        j['cashBank'] as Map<String, dynamic>?,
+        fallbackView: j['manageCashBank'] as bool? ?? false,
+        fallbackCreate: j['manageCashBank'] as bool? ?? false,
         fallbackUpdate: legacyEdit,
         fallbackDelete: legacyDel,
       ),

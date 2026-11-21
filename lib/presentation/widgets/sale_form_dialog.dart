@@ -23,6 +23,8 @@ Future<void> showSaleFormDialog(
   }
 
   FuelType selectedFuel = existing?.fuel ?? FuelType.diesel;
+  String selectedMethod =
+      ErpStore.normalizeMethod(existing?.paymentMethod ?? 'Cash');
   final initialPurchaser = store.findPurchaser(selectedPurchaserId)!;
   final initialRate = existing?.rateUsed ?? initialPurchaser.rateFor(selectedFuel);
   final initialLiters = existing?.liters ?? 200;
@@ -322,6 +324,45 @@ Future<void> showSaleFormDialog(
                     ),
                     const SizedBox(height: 14),
                     Text(
+                      tr(isUrdu, '6. Payment Method (Cash / Bank Account)',
+                          '6. ادائیگی کا طریقہ (کیش / بینک اکاؤنٹ)'),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: erp.textMain),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          avatar: Icon(Icons.payments_rounded,
+                              size: 16,
+                              color: selectedMethod == 'Cash'
+                                  ? erp.success
+                                  : erp.textMuted),
+                          label: Text(tr(isUrdu, 'Cash (Counter)', 'نقد کیش')),
+                          selected: selectedMethod == 'Cash',
+                          onSelected: (_) =>
+                              setState(() => selectedMethod = 'Cash'),
+                        ),
+                        ChoiceChip(
+                          avatar: Icon(Icons.account_balance_rounded,
+                              size: 16,
+                              color: selectedMethod == 'Bank Transfer'
+                                  ? erp.primary
+                                  : erp.textMuted),
+                          label: Text(
+                              tr(isUrdu, 'Bank Transfer', 'بینک ٹرانسفر')),
+                          selected: selectedMethod == 'Bank Transfer',
+                          onSelected: (_) =>
+                              setState(() => selectedMethod = 'Bank Transfer'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
                       tr(isUrdu, 'Note (Optional)', 'نوٹ / تفصیل (اختیاری)'),
                       style: TextStyle(
                           fontSize: 12,
@@ -410,6 +451,7 @@ Future<void> showSaleFormDialog(
                                   liters: l,
                                   rateUsed: r,
                                   paidNow: p,
+                                  paymentMethod: selectedMethod,
                                   note: noteCtrl.text.trim(),
                                 ),
                               );
@@ -420,6 +462,7 @@ Future<void> showSaleFormDialog(
                                 liters: l,
                                 rateUsed: r,
                                 paidNow: p,
+                                paymentMethod: selectedMethod,
                                 note: noteCtrl.text.trim(),
                               );
                             }
