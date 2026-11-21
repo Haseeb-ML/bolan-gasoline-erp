@@ -66,7 +66,7 @@ class ErpSeedData {
           id: 'CASH',
           nameEn: 'Walk-in Customer',
           nameUr: 'واک ان کسٹمر',
-          phone: 'Walk-in',
+          phone: '',
           petrolRate: 262,
           dieselRate: 272,
         ),

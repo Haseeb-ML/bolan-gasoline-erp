@@ -218,7 +218,7 @@ class ErpStore extends ChangeNotifier {
               ? p.copyWith(
                   nameEn: 'Walk-in Customer',
                   nameUr: 'واک ان کسٹمر',
-                  phone: 'Walk-in',
+                  phone: '',
                 )
               : p)
           .toList();
@@ -1476,7 +1476,7 @@ class ErpStore extends ChangeNotifier {
         id: 'CASH',
         nameEn: 'Walk-in Customer',
         nameUr: 'واک ان کسٹمر',
-        phone: 'Walk-in',
+        phone: '',
         petrolRate: fuelStocks[FuelType.petrol]!.cashSaleRate,
         dieselRate: fuelStocks[FuelType.diesel]!.cashSaleRate,
       ),

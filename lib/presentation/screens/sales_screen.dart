@@ -440,7 +440,9 @@ class _SalesScreenState extends State<SalesScreen> {
                               value: p?.displayName(isUrdu) ?? s.purchaserId,
                               isBold: true,
                             ),
-                            if (p != null && p.phone.isNotEmpty)
+                            if (p != null &&
+                                !p.isCashCounter &&
+                                p.phone.isNotEmpty)
                               RecordDetailField(
                                 label: tr(isUrdu, 'Phone', 'فون نمبر'),
                                 value: p.phone,
