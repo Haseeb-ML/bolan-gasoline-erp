@@ -64,9 +64,9 @@ class ErpSeedData {
   static List<Purchaser> purchasers() => const [
         Purchaser(
           id: 'CASH',
-          nameEn: 'Cash Counter Sale (Walk-in)',
-          nameUr: 'نقد کاؤنٹر سیل (کیش)',
-          phone: 'Counter',
+          nameEn: 'Walk-in Customer',
+          nameUr: 'واک ان کسٹمر',
+          phone: 'Walk-in',
           petrolRate: 262,
           dieselRate: 272,
         ),

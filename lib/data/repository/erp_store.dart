@@ -214,6 +214,13 @@ class ErpStore extends ChangeNotifier {
     if (map['purchasers'] is List) {
       purchasers = (map['purchasers'] as List)
           .map((e) => Purchaser.fromJson(e as Map<String, dynamic>))
+          .map((p) => p.id == 'CASH'
+              ? p.copyWith(
+                  nameEn: 'Walk-in Customer',
+                  nameUr: 'واک ان کسٹمر',
+                  phone: 'Walk-in',
+                )
+              : p)
           .toList();
     }
     if (map['suppliers'] is List) {
@@ -1467,9 +1474,9 @@ class ErpStore extends ChangeNotifier {
     purchasers = [
       Purchaser(
         id: 'CASH',
-        nameEn: 'Cash Counter Sale (Walk-in)',
-        nameUr: 'نقد کاؤنٹر سیل (کیش)',
-        phone: 'Counter',
+        nameEn: 'Walk-in Customer',
+        nameUr: 'واک ان کسٹمر',
+        phone: 'Walk-in',
         petrolRate: fuelStocks[FuelType.petrol]!.cashSaleRate,
         dieselRate: fuelStocks[FuelType.diesel]!.cashSaleRate,
       ),

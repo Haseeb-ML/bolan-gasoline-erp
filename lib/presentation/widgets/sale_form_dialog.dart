@@ -110,8 +110,8 @@ Future<void> showSaleFormDialog(
                     ),
                     const Divider(height: 24),
                     Text(
-                      tr(isUrdu, '1. Select Cash or Purchaser',
-                          '1. کیش یا پرچیزر منتخب کریں'),
+                      tr(isUrdu, '1. Select Walk-in or Purchaser',
+                          '1. واک ان یا پرچیزر منتخب کریں'),
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -279,7 +279,7 @@ Future<void> showSaleFormDialog(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              tr(isUrdu, '5. Cash Paid Now (Rs.)',
+                              tr(isUrdu, '5. Paid Now (Rs.)',
                                   '5. ابھی وصول شدہ رقم (روپے)'),
                               style: TextStyle(
                                   fontSize: 12,
@@ -342,7 +342,7 @@ Future<void> showSaleFormDialog(
                               color: selectedMethod == 'Cash'
                                   ? erp.success
                                   : erp.textMuted),
-                          label: Text(tr(isUrdu, 'Cash (Counter)', 'نقد کیش')),
+                          label: Text(tr(isUrdu, 'Cash', 'نقد کیش')),
                           selected: selectedMethod == 'Cash',
                           onSelected: (_) =>
                               setState(() => selectedMethod = 'Cash'),
