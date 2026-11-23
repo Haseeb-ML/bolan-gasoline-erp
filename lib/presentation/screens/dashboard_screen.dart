@@ -68,6 +68,12 @@ class DashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 18),
 
+        // Cash & Bank Available Funds (Client requirement: Dashboard shows cash in hand & bank balances)
+        if (store.canAccessModule(ErpModule.cashBank)) ...[
+          _CashBankFundsSection(store: store, isUrdu: isUrdu),
+          const SizedBox(height: 18),
+        ],
+
         // Recent Sales + Top Purchasers Khata Summary (strictly filtered by RBAC permissions)
         if (store.activePermissions.manageSales ||
             store.activePermissions.managePurchasers)
@@ -473,6 +479,310 @@ class _TopPurchasersPanel extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CashBankFundsSection extends StatelessWidget {
+  const _CashBankFundsSection({
+    required this.store,
+    required this.isUrdu,
+  });
+
+  final ErpStore store;
+  final bool isUrdu;
+
+  @override
+  Widget build(BuildContext context) {
+    final erp = context.erp;
+    final cashBal = store.totalCashInHand;
+    final bankBal = store.totalBankBalance;
+    final totalBal = store.totalLiquidFunds;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: erp.cardBg,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: erp.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 10,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: erp.primarySoft,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.account_balance_wallet_rounded,
+                          color: erp.primary,
+                          size: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        tr(isUrdu, 'PUMP CASH & BANK FUNDS', 'پمپ کیش اور بینک بیلنس'),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: erp.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    tr(isUrdu, 'Available Liquid Funds', 'دستیاب نقد اور بینک رقم'),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: erp.textMain,
+                    ),
+                  ),
+                ],
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: erp.primarySoft,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: erp.primaryBorder),
+                    ),
+                    child: Text(
+                      '${tr(isUrdu, 'Total:', 'کل:')} ${formatRs(totalBal)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: erp.primary,
+                      ),
+                    ),
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: erp.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    onPressed: () => showCashBankTransferDialog(context, store),
+                    icon: const Icon(Icons.swap_horiz_rounded, size: 15),
+                    label: Text(
+                      tr(isUrdu, 'Transfer', 'ٹرانسفر'),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (_, constraints) {
+              final twoCol = constraints.maxWidth >= 640;
+              final cashCard = _FundCard(
+                title: tr(isUrdu, 'Cash in Hand (Counter / Drawer)', 'موجودہ نقد کیش (گلہ / کاؤنٹر)'),
+                subtitle: tr(isUrdu, 'Daily walk-in sales & cash recoveries', 'نقد تیل سیل اور پرچیزر وصولیاں'),
+                amountText: formatRs(cashBal),
+                badgeText: tr(isUrdu, 'Liquid Cash', 'نقد رقم'),
+                icon: Icons.payments_rounded,
+                accentColor: erp.success,
+                accentSoft: erp.successSoft,
+                onTap: () => store.setModule(ErpModule.cashBank),
+                isUrdu: isUrdu,
+              );
+              final bankCard = _FundCard(
+                title: tr(isUrdu, 'Bank Account Balance (Online)', 'بینک اکاؤنٹ بیلنس (آن لائن)'),
+                subtitle: tr(isUrdu, 'Online transfers & direct bank payments', 'آن لائن ٹرانسفر اور بینک ادائیگیاں'),
+                amountText: formatRs(bankBal),
+                badgeText: tr(isUrdu, 'Online / Bank', 'بینک اکاؤنٹ'),
+                icon: Icons.account_balance_rounded,
+                accentColor: erp.dieselColor,
+                accentSoft: erp.dieselSoft,
+                onTap: () => store.setModule(ErpModule.cashBank),
+                isUrdu: isUrdu,
+              );
+
+              if (twoCol) {
+                return Row(
+                  children: [
+                    Expanded(child: cashCard),
+                    const SizedBox(width: 14),
+                    Expanded(child: bankCard),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  cashCard,
+                  const SizedBox(height: 12),
+                  bankCard,
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FundCard extends StatelessWidget {
+  const _FundCard({
+    required this.title,
+    required this.subtitle,
+    required this.amountText,
+    required this.badgeText,
+    required this.icon,
+    required this.accentColor,
+    required this.accentSoft,
+    required this.onTap,
+    required this.isUrdu,
+  });
+
+  final String title;
+  final String subtitle;
+  final String amountText;
+  final String badgeText;
+  final IconData icon;
+  final Color accentColor;
+  final Color accentSoft;
+  final VoidCallback onTap;
+  final bool isUrdu;
+
+  @override
+  Widget build(BuildContext context) {
+    final erp = context.erp;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: erp.cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: accentSoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: accentColor, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: erp.textMain,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: erp.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: accentSoft,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      badgeText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: accentColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      amountText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: erp.textMain,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        tr(isUrdu, 'View Ledger', 'کھاتہ دیکھیں'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: erp.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_rounded, size: 14, color: erp.primary),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

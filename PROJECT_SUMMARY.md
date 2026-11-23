@@ -18,6 +18,12 @@
 ### 1. Dashboard
 - 4 Key KPIs: Today's Total Sales, Tank Stock Value, Outstanding Purchaser Credit, Net Balance.
 - Real-time Petrol & Diesel tank levels (Remaining Liters, Total Capacity, and Stock Value in PKR).
+- **Pump Cash & Bank Funds Section:**
+  - **Cash in Hand (Counter / Drawer):** Shows exact cash available in drawer from walk-in sales & cash recoveries.
+  - **Bank Account Balance (Online):** Shows exact bank account balance from online transfers, cheques & bank receipts.
+  - **Total Available Liquid Funds:** Aggregate total of Cash + Bank.
+  - **Instant Cash <-> Bank Transfer:** Quick deposit / withdrawal modal with date entry directly accessible from Dashboard.
+  - One-tap navigation from Cash/Bank cards straight to the detailed Cash & Bank account ledger.
 - Quick Action buttons and Recent Activity feed.
 
 ### 2. Fuel Sales (Counter & Account Holders)
