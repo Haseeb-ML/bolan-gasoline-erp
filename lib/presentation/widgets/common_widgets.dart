@@ -2646,3 +2646,142 @@ Future<void> openPdfReportViewer(
     },
   );
 }
+
+class ErpPaginationBar extends StatelessWidget {
+  const ErpPaginationBar({
+    super.key,
+    required this.currentPage,
+    required this.totalItems,
+    this.pageSize = 15,
+    required this.onPageChanged,
+    required this.isUrdu,
+  });
+
+  final int currentPage;
+  final int totalItems;
+  final int pageSize;
+  final ValueChanged<int> onPageChanged;
+  final bool isUrdu;
+
+  int get totalPages => (totalItems / pageSize).ceil().clamp(1, 999999);
+
+  @override
+  Widget build(BuildContext context) {
+    if (totalItems == 0) return const SizedBox.shrink();
+
+    final erp = context.erp;
+    final start = ((currentPage - 1) * pageSize) + 1;
+    final end = (currentPage * pageSize).clamp(0, totalItems);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: erp.cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: erp.cardBorder),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 420;
+          final iconSize = compact ? 16.0 : 20.0;
+          final fontSize = compact ? 10.5 : 12.0;
+          final pagePadH = compact ? 6.0 : 10.0;
+
+          final navRow = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                constraints: compact
+                    ? const BoxConstraints(minWidth: 28, minHeight: 28)
+                    : null,
+                padding: compact ? EdgeInsets.zero : null,
+                tooltip: tr(isUrdu, 'First Page', 'پہلا صفحہ'),
+                icon: Icon(Icons.first_page_rounded, size: iconSize),
+                onPressed: currentPage > 1 ? () => onPageChanged(1) : null,
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                constraints: compact
+                    ? const BoxConstraints(minWidth: 28, minHeight: 28)
+                    : null,
+                padding: compact ? EdgeInsets.zero : null,
+                tooltip: tr(isUrdu, 'Previous Page', 'پچھلا صفحہ'),
+                icon: Icon(Icons.chevron_left_rounded, size: iconSize),
+                onPressed:
+                    currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
+              ),
+              Container(
+                padding:
+                    EdgeInsets.symmetric(horizontal: pagePadH, vertical: 4),
+                decoration: BoxDecoration(
+                  color: erp.primarySoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  tr(
+                    isUrdu,
+                    '$currentPage/$totalPages',
+                    '$currentPage/$totalPages',
+                  ),
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w800,
+                    color: erp.primary,
+                  ),
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                constraints: compact
+                    ? const BoxConstraints(minWidth: 28, minHeight: 28)
+                    : null,
+                padding: compact ? EdgeInsets.zero : null,
+                tooltip: tr(isUrdu, 'Next Page', 'اگلا صفحہ'),
+                icon: Icon(Icons.chevron_right_rounded, size: iconSize),
+                onPressed: currentPage < totalPages
+                    ? () => onPageChanged(currentPage + 1)
+                    : null,
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                constraints: compact
+                    ? const BoxConstraints(minWidth: 28, minHeight: 28)
+                    : null,
+                padding: compact ? EdgeInsets.zero : null,
+                tooltip: tr(isUrdu, 'Last Page', 'آخری صفحہ'),
+                icon: Icon(Icons.last_page_rounded, size: iconSize),
+                onPressed: currentPage < totalPages
+                    ? () => onPageChanged(totalPages)
+                    : null,
+              ),
+            ],
+          );
+
+          return Wrap(
+            spacing: compact ? 6 : 12,
+            runSpacing: 6,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                tr(
+                  isUrdu,
+                  '$start–$end of $totalItems ($pageSize/pg)',
+                  '$start–$end از $totalItems ($pageSize/pg)',
+                ),
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w600,
+                  color: erp.textMuted,
+                ),
+              ),
+              navRow,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}

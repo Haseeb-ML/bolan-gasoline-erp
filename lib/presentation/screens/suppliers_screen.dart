@@ -19,6 +19,8 @@ class SuppliersScreen extends StatefulWidget {
 
 class _SuppliersScreenState extends State<SuppliersScreen> {
   final Set<String> _selectedIds = {};
+  int _currentPage = 1;
+  static const int _pageSize = 15;
 
   List<FuelSupplier> get _filteredSuppliers {
     final q = widget.store.searchQuery;
@@ -216,11 +218,27 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
               subtitle: tr(isUrdu, 'Add a fuel tanker supplier to track purchases.',
                   'تیل خریداری کے لیے سپلائر شامل کریں۔'),
             )
-          else
+          else ...[
             LayoutBuilder(
-              builder: (_, constraints) =>
-                  _buildDesktopTable(list, allSelected, constraints.maxWidth),
+              builder: (_, constraints) {
+                final totalPages =
+                    (list.length / _pageSize).ceil().clamp(1, 999999);
+                final page = _currentPage.clamp(1, totalPages);
+                final pagedList =
+                    list.skip((page - 1) * _pageSize).take(_pageSize).toList();
+                return _buildDesktopTable(
+                    pagedList, allSelected, constraints.maxWidth);
+              },
             ),
+            ErpPaginationBar(
+              currentPage: _currentPage.clamp(
+                  1, (list.length / _pageSize).ceil().clamp(1, 999999)),
+              totalItems: list.length,
+              pageSize: _pageSize,
+              isUrdu: isUrdu,
+              onPageChanged: (p) => setState(() => _currentPage = p),
+            ),
+          ],
         ],
       ),
     );

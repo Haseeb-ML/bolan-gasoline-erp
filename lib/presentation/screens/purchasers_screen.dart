@@ -19,6 +19,8 @@ class PurchasersScreen extends StatefulWidget {
 
 class _PurchasersScreenState extends State<PurchasersScreen> {
   final Set<String> _selectedIds = {};
+  int _currentPage = 1;
+  static const int _pageSize = 15;
 
   List<Purchaser> get _filteredPurchasers {
     final q = widget.store.searchQuery;
@@ -224,11 +226,27 @@ class _PurchasersScreenState extends State<PurchasersScreen> {
               subtitle: tr(isUrdu, 'Add a purchaser account to track their khata & history.',
                   'کھاتہ اور ہسٹری رکھنے کے لیے نیا پرچیزر شامل کریں۔'),
             )
-          else
+          else ...[
             LayoutBuilder(
-              builder: (_, constraints) =>
-                  _buildDesktopTable(list, allSelected, constraints.maxWidth),
+              builder: (_, constraints) {
+                final totalPages =
+                    (list.length / _pageSize).ceil().clamp(1, 999999);
+                final page = _currentPage.clamp(1, totalPages);
+                final pagedList =
+                    list.skip((page - 1) * _pageSize).take(_pageSize).toList();
+                return _buildDesktopTable(
+                    pagedList, allSelected, constraints.maxWidth);
+              },
             ),
+            ErpPaginationBar(
+              currentPage: _currentPage.clamp(
+                  1, (list.length / _pageSize).ceil().clamp(1, 999999)),
+              totalItems: list.length,
+              pageSize: _pageSize,
+              isUrdu: isUrdu,
+              onPageChanged: (p) => setState(() => _currentPage = p),
+            ),
+          ],
         ],
       ),
     );

@@ -20,6 +20,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   final Set<String> _selectedIds = {};
   String _period = 'all';
   DateTimeRange? _customRange;
+  int _currentPage = 1;
+  static const int _pageSize = 15;
 
   List<PumpExpense> get _filteredExpenses {
     final q = widget.store.searchQuery;
@@ -177,7 +179,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             selectedPeriod: _period,
             customRange: _customRange,
             isUrdu: isUrdu,
-            onSelectPeriod: (p) => setState(() => _period = p),
+            onSelectPeriod: (p) => setState(() {
+              _period = p;
+              _currentPage = 1;
+            }),
             onPickCalendar: () async {
               final picked = await showDateRangePicker(
                 context: context,
@@ -189,6 +194,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 setState(() {
                   _customRange = picked;
                   _period = 'custom';
+                  _currentPage = 1;
                 });
               }
             },
@@ -221,11 +227,27 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               subtitle: tr(isUrdu, 'Add staff salary or pump expense.',
                   'تنخواہ یا پمپ کا خرچہ شامل کریں۔'),
             )
-          else
+          else ...[
             LayoutBuilder(
-              builder: (_, constraints) =>
-                  _buildDesktopTable(list, allSelected, constraints.maxWidth),
+              builder: (_, constraints) {
+                final totalPages =
+                    (list.length / _pageSize).ceil().clamp(1, 999999);
+                final page = _currentPage.clamp(1, totalPages);
+                final pagedList =
+                    list.skip((page - 1) * _pageSize).take(_pageSize).toList();
+                return _buildDesktopTable(
+                    pagedList, allSelected, constraints.maxWidth);
+              },
             ),
+            ErpPaginationBar(
+              currentPage: _currentPage.clamp(
+                  1, (list.length / _pageSize).ceil().clamp(1, 999999)),
+              totalItems: list.length,
+              pageSize: _pageSize,
+              isUrdu: isUrdu,
+              onPageChanged: (p) => setState(() => _currentPage = p),
+            ),
+          ],
         ],
       ),
     );

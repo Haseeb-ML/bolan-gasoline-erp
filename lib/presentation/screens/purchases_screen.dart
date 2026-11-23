@@ -22,6 +22,8 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
   final Set<String> _selectedIds = {};
   String _period = 'all';
   DateTimeRange? _customRange;
+  int _currentPage = 1;
+  static const int _pageSize = 15;
 
   List<FuelPurchase> get _filteredPurchases {
     final q = widget.store.searchQuery;
@@ -238,7 +240,10 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                 selectedPeriod: _period,
                 customRange: _customRange,
                 isUrdu: isUrdu,
-                onSelectPeriod: (p) => setState(() => _period = p),
+                onSelectPeriod: (p) => setState(() {
+                  _period = p;
+                  _currentPage = 1;
+                }),
                 onPickCalendar: () async {
                   final picked = await showDateRangePicker(
                     context: context,
@@ -250,6 +255,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                     setState(() {
                       _customRange = picked;
                       _period = 'custom';
+                      _currentPage = 1;
                     });
                   }
                 },
@@ -282,11 +288,29 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                   subtitle: tr(isUrdu, 'Record a fuel tanker arrival to add stock.',
                       'اسٹاک شامل کرنے کے لیے نیا تیل ٹینکر درج کریں۔'),
                 )
-              else
+              else ...[
                 LayoutBuilder(
-                  builder: (_, constraints) => _buildDesktopTable(
-                      list, allSelected, constraints.maxWidth),
+                  builder: (_, constraints) {
+                    final totalPages =
+                        (list.length / _pageSize).ceil().clamp(1, 999999);
+                    final page = _currentPage.clamp(1, totalPages);
+                    final pagedList = list
+                        .skip((page - 1) * _pageSize)
+                        .take(_pageSize)
+                        .toList();
+                    return _buildDesktopTable(
+                        pagedList, allSelected, constraints.maxWidth);
+                  },
                 ),
+                ErpPaginationBar(
+                  currentPage: _currentPage.clamp(
+                      1, (list.length / _pageSize).ceil().clamp(1, 999999)),
+                  totalItems: list.length,
+                  pageSize: _pageSize,
+                  isUrdu: isUrdu,
+                  onPageChanged: (p) => setState(() => _currentPage = p),
+                ),
+              ],
             ],
           ),
         ),

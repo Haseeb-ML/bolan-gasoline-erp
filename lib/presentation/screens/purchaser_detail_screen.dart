@@ -42,6 +42,8 @@ class _PurchaserDetailScreenState extends State<PurchaserDetailScreen> {
   String _filterKind = 'all'; // 'all' | 'sale' | 'payment'
   String _periodFilter = 'all'; // 'all' | 'week' | 'month' | 'year' | 'custom'
   DateTimeRange? _customRange;
+  int _currentPage = 1;
+  static const int _pageSize = 15;
 
   List<LedgerHistoryRow> _applyPeriodFilter(List<LedgerHistoryRow> input) {
     return filterByPeriod(
@@ -668,9 +670,16 @@ class _PurchaserDetailScreenState extends State<PurchaserDetailScreen> {
                               selectedPeriod: _periodFilter,
                               customRange: _customRange,
                               isUrdu: isUrdu,
-                              onSelectPeriod: (p) =>
-                                  setState(() => _periodFilter = p),
-                              onPickCalendar: _pickCalendarRange,
+                              onSelectPeriod: (p) => setState(() {
+                                _periodFilter = p;
+                                _currentPage = 1;
+                              }),
+                              onPickCalendar: () async {
+                                await _pickCalendarRange();
+                                if (mounted) {
+                                  setState(() => _currentPage = 1);
+                                }
+                              },
                               onDownloadPdf: () =>
                                   _downloadKhataPdf(purchaser, rows),
                               onDownloadReport: () =>
@@ -708,16 +717,37 @@ class _PurchaserDetailScreenState extends State<PurchaserDetailScreen> {
                                   'اس پرچیزر کے لیے نیا تیل بل یا رقم وصولی درج کریں۔',
                                 ),
                               )
-                            else
+                            else ...[
                               LayoutBuilder(
-                                builder: (_, constraints) =>
-                                    _buildDesktopHistory(
-                                  rows,
-                                  allSelected,
-                                  isUrdu,
-                                  constraints.maxWidth,
-                                ),
+                                builder: (_, constraints) {
+                                  final totalPages =
+                                      (rows.length / _pageSize).ceil().clamp(1, 999999);
+                                  final page = _currentPage.clamp(1, totalPages);
+                                  final pagedRows = rows
+                                      .skip((page - 1) * _pageSize)
+                                      .take(_pageSize)
+                                      .toList();
+                                  return _buildDesktopHistory(
+                                    pagedRows,
+                                    allSelected,
+                                    isUrdu,
+                                    constraints.maxWidth,
+                                  );
+                                },
                               ),
+                              ErpPaginationBar(
+                                currentPage: _currentPage.clamp(
+                                    1,
+                                    (rows.length / _pageSize)
+                                        .ceil()
+                                        .clamp(1, 999999)),
+                                totalItems: rows.length,
+                                pageSize: _pageSize,
+                                isUrdu: isUrdu,
+                                onPageChanged: (p) =>
+                                    setState(() => _currentPage = p),
+                              ),
+                            ],
                           ],
                         ),
                       ),

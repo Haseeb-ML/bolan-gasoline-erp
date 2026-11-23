@@ -20,6 +20,8 @@ class _CashBankScreenState extends State<CashBankScreen> {
   String _methodFilter = 'all'; // 'all' | 'Cash' | 'Bank Transfer'
   String _period = 'all';
   DateTimeRange? _customRange;
+  int _currentPage = 1;
+  static const int _pageSize = 15;
 
   List<CashBankEntry> get _filteredEntries {
     final q = widget.store.searchQuery;
@@ -237,22 +239,28 @@ class _CashBankScreenState extends State<CashBankScreen> {
                         visualDensity: VisualDensity.compact,
                         label: Text(tr(isUrdu, 'All', 'سب')),
                         selected: _methodFilter == 'all',
-                        onSelected: (_) =>
-                            setState(() => _methodFilter = 'all'),
+                        onSelected: (_) => setState(() {
+                          _methodFilter = 'all';
+                          _currentPage = 1;
+                        }),
                       ),
                       ChoiceChip(
                         visualDensity: VisualDensity.compact,
                         label: Text(tr(isUrdu, 'Cash', 'نقد کیش')),
                         selected: _methodFilter == 'Cash',
-                        onSelected: (_) =>
-                            setState(() => _methodFilter = 'Cash'),
+                        onSelected: (_) => setState(() {
+                          _methodFilter = 'Cash';
+                          _currentPage = 1;
+                        }),
                       ),
                       ChoiceChip(
                         visualDensity: VisualDensity.compact,
                         label: Text(tr(isUrdu, 'Bank', 'بینک')),
                         selected: _methodFilter == 'Bank Transfer',
-                        onSelected: (_) =>
-                            setState(() => _methodFilter = 'Bank Transfer'),
+                        onSelected: (_) => setState(() {
+                          _methodFilter = 'Bank Transfer';
+                          _currentPage = 1;
+                        }),
                       ),
                       if (widget.store.canCreateIn(ErpModule.cashBank))
                         FilledButton.icon(
@@ -278,7 +286,10 @@ class _CashBankScreenState extends State<CashBankScreen> {
                 selectedPeriod: _period,
                 customRange: _customRange,
                 isUrdu: isUrdu,
-                onSelectPeriod: (p) => setState(() => _period = p),
+                onSelectPeriod: (p) => setState(() {
+                  _period = p;
+                  _currentPage = 1;
+                }),
                 onPickCalendar: () async {
                   final picked = await showDateRangePicker(
                     context: context,
@@ -290,6 +301,7 @@ class _CashBankScreenState extends State<CashBankScreen> {
                     setState(() {
                       _customRange = picked;
                       _period = 'custom';
+                      _currentPage = 1;
                     });
                   }
                 },
@@ -308,11 +320,28 @@ class _CashBankScreenState extends State<CashBankScreen> {
                     'فروخت، وصولیاں، اخراجات اور ٹرانسفر خود بخود یہاں آتے ہیں۔',
                   ),
                 )
-              else
+              else ...[
                 LayoutBuilder(
-                  builder: (_, constraints) =>
-                      _buildTable(list, constraints.maxWidth),
+                  builder: (_, constraints) {
+                    final totalPages =
+                        (list.length / _pageSize).ceil().clamp(1, 999999);
+                    final page = _currentPage.clamp(1, totalPages);
+                    final pagedList = list
+                        .skip((page - 1) * _pageSize)
+                        .take(_pageSize)
+                        .toList();
+                    return _buildTable(pagedList, constraints.maxWidth);
+                  },
                 ),
+                ErpPaginationBar(
+                  currentPage: _currentPage.clamp(
+                      1, (list.length / _pageSize).ceil().clamp(1, 999999)),
+                  totalItems: list.length,
+                  pageSize: _pageSize,
+                  isUrdu: isUrdu,
+                  onPageChanged: (p) => setState(() => _currentPage = p),
+                ),
+              ],
             ],
           ),
         ),
